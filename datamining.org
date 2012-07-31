@@ -19,4 +19,5 @@
     10. Assess results
     11. Begin again
   - figure
-	[[file:11steps.jpg][Data mining is not a linear process]]
+	#+CAPTION: Data mining is not a linear process
+	[[file:datamining/11steps.jpg]]
