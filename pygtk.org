@@ -1,0 +1,64 @@
+* Minimal PyGTK
+** PyGTK program pattern
+#+BEGIN_SRC python -n -r
+import pygtk
+pygtk.require('2.0')
+import gtk
+class Base:
+	def __init__(self):
+		self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+		# create subwidgets
+		# connect widgets with events and signals
+		# show subwidgets
+		self.window.show()
+	def callback_signal_func(self, widget, callback_data)
+		pass
+	def callback_event_func(self, widget, event, callback_data)
+		pass
+	def main(self):
+		gtk.main()
+if __name__ == '__main__':
+	base = Base()
+	base.main()
+#+END_SRC
+** Button
+   - create\\
+	 gtk.Button(label = None)
+   - signals
+	 + pressed :: emitted when pointer button is pressed within Button widget
+	 + released :: emitted when pointer button is released within Button widget
+	 + clicked :: emitted when pointer button is pressed and then released within Button widget
+	 + enter :: emitted when pointer enters Button widget
+	 + leave :: emitted when pointer leaves Button widget
+** Text Entry
+   - create\\
+	 gtk.Entry(max = 0)
+   - methods
+	 + set_text(text)
+	 + get_text()
+	 + set_editable(is_editable)
+** HBox and VBox
+   - create
+	 + gtk.HBox(homogeneous = False, spacing = 0)
+	 + gtk.VBox(homogeneous = False, spacing = 0)
+   - methods
+	 + pack_start(child, expand=True, fill=True, padding=0)
+	 + pack_end(child, expand=True, fill=True, padding=0)
+* Packing Widgets
+* Button Widgets
+* Adjustments
+* Range Widgets
+* Miscellaneous Widgets
+* Container Widgets
+* Menu Widgets
+* Drawing Area
+* TextView Widget
+* TreeView Widget
+* New Widgets
+* Undocumented Widgets
+* Setting Widget Attributes
+* Timeouts, IO and Idle Functions
+* Event and Signal Handling
+* Managing Selections
+* Drag-and-Drop
+* GTK's rc Files
