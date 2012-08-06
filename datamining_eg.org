@@ -1,0 +1,42 @@
+* Measuring fitness for individuals
+** Profile for readers' characteristics of a nationwide publication
+|                                       | Yes |  No |
+|---------------------------------------+-----+-----|
+| /                                     |   < |   < |
+| collede educated                      | 58% | 42% |
+| professional or executive occupations | 46% | 54% |
+| income > $75K                         | 21% | 79% |
+| income > $100K                        |  7% | 93% |
+** Two survey participants
+|                                       | Amy | Bob |
+|---------------------------------------+-----+-----|
+| /                                     | <   |     |
+| collede educated                      | Yes | No  |
+| professional or executive occupations | Yes | No  |
+| income > $75K                         | Yes | No  |
+| income > $100K                        | No  | Yes |
+** Fitness Scores for individuals
+*** Solution 1
+|                                       |        Yes |         No |      |      |
+|                                       | ReaderShip | ReaderShip |  Amy |  Bob |
+|---------------------------------------+------------+------------+------+------|
+| /                                     |          < |          < |    < |      |
+| collede educated                      |        58% |        42% | 0.58 | 0.42 |
+| professional or executive occupations |        46% |        54% | 0.46 | 0.54 |
+| income > $75K                         |        21% |        79% | 0.21 | 0.79 |
+| income > $100K                        |         7% |        93% | 0.93 | 0.93 |
+|---------------------------------------+------------+------------+------+------|
+| Total                                 |            |            | 2.18 | 2.68 |
+*** Solution 2
+|                  |         |        Yes |       |         |         No |       |      |      |
+|                  | Reader- |         US | Index | Reader- |         US | Index |  Amy |  Bob |
+|                  |    Ship | Population |       |    Ship | Population |       |      |      |
+|------------------+---------+------------+-------+---------+------------+-------+------+------|
+| /                |       < |            |       |       < |            |       |    < |      |
+| collede educated |     58% |      20.3% |  2.86 |     42% |      79.7% |  0.53 | 2.86 | 0.53 |
+| prof or exec     |     46% |      19.2% |  2.40 |     54% |      80.8% |  0.67 | 2.40 | 0.67 |
+| income > $75K    |     21% |       9.5% |  2.21 |     79% |      90.5% |  0.87 | 2.21 | 0.87 |
+| income > $100K   |      7% |       2.4% |  2.92 |     93% |      97.6% |  0.95 | 0.95 | 0.95 |
+|------------------+---------+------------+-------+---------+------------+-------+------+------|
+| Total            |         |            |       |         |            |       | 8.42 | 3.02 |
+
