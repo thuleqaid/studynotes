@@ -12,10 +12,16 @@ class CfgFunc(object):
         # regex patterns
         self._re_goto=re.compile(r'^\s+goto\s+(?P<label1><.+?>)(\s+\((?P<label2>.+?)\))?;$')
         self._re_switch=re.compile(r'^\s+switch\s+\((?P<var>.+)\)\s+<(?P<case>.+)>$')
+        self._re_autovar=re.compile(r'\.\d+$')
+        self._re_asign1=re.compile(r'^\s+(?P<dst>\S+)\s+=\s+(\(.+\)\s+)?(?P<src>\S+);$') # x = (type) y;
+        self._re_asign2=re.compile(r'^\s+(?P<dst>\S+)\s+=\s+(?P<src1>\S+)\s+(?P<op>\S+)\s+(?P<src2>\S+);$') # x = y or z;
+        self._re_asign3=re.compile(r'^\s+(?P<dst>\S+)\s+=\s+(?P<func>\S+)\s+\((?P<params>.*)\);$') # x = func (a, b, ..., z);
+        self._re_asign4=re.compile(r'^\s+(?P<func>\S+)\s+\((?P<params>.*)\);$') # func (a, b, ..., z);
         # parse func name and params
         self._parsefuncdecl(states[0])
         # parse func source
         self._parsebody(states[2:-1])
+        self.simplify()
     def _parsefuncdecl(self,funcdecl):
         self._log.debug('CfgFunc:ParseFuncDecl:'+funcdecl)
         i=funcdecl.index('(')
@@ -36,7 +42,7 @@ class CfgFunc(object):
         # the first line of a code block is "Label:" with nothing else
         self._log.debug('CfgFunc:ParseFuncBody:'+":".join(states))
         sects=[]
-        self._localvars=[]
+        self._localvars={'manual':[],'auto1':[],'auto2':[]} # manual:source vars, auto1:gcc generated normal vars, auto2:gcc generated critical vars(used in condition statement or return statement)
         self._edges=[]
         self._block={}
         self._prevlabel=''
@@ -57,7 +63,11 @@ class CfgFunc(object):
         if states[0].startswith(' '):
             # local vars declaration block
             for line in states:
-                self._localvars.append(line[line.rindex(' ')+1:-1])
+                varname=line[line.rindex(' ')+1:-1]
+                if self._re_autovar.search(varname):
+                    self._localvars['auto1'].append(varname)
+                else:
+                    self._localvars['manual'].append(varname)
         else:
             # code block
             blocklabel=states[0][:-1]
@@ -95,7 +105,7 @@ class CfgFunc(object):
                     else:
                         label=reret.group('label1')
                     self._edges.append((blocklabel,label,""))
-                    self._block[blocklabel]='\\l'.join(states[1:-1])+'\\l'
+                    self._block[blocklabel]=tuple(states[1:-1])
                 else:
                     # regex pattern error
                     self._log.error('CfgFunc:RegExPattern:'+states[-1])
@@ -104,6 +114,10 @@ class CfgFunc(object):
                 conditionindex=states[-4].find('(')
                 if conditionindex>=0:
                     condition=states[-4][conditionindex+1:-1]
+                    conditionname=condition[:condition.index(' ')]
+                    if conditionname in self._localvars['auto1']:
+                        self._localvars['auto2'].append(conditionname)
+                        self._localvars['auto1'].remove(conditionname)
                     # True path
                     reret=self._re_goto.search(states[-3])
                     if reret:
@@ -138,7 +152,7 @@ class CfgFunc(object):
                     else:
                         # regex pattern error
                         self._log.error('CfgFunc:RegExPattern:'+states[-1])
-                    self._block[blocklabel]='\\l'.join(states[1:-4])+'\\l'
+                    self._block[blocklabel]=tuple(states[1:-4])
                 else:
                     self._log.error('CfgFunc:if-CodeBlock:'+':'.join(states))
             elif states[-1].startswith('  switch'):
@@ -146,6 +160,9 @@ class CfgFunc(object):
                 reret=self._re_switch.search(states[-1])
                 if reret:
                     var=reret.group('var')
+                    if var in self._localvars['auto1']:
+                        self._localvars['auto2'].append(var)
+                        self._localvars['auto1'].remove(var)
                     cases=reret.group('case') # format:[default: <xx>, case x: <xx>, case x ... y: <xx>]
                     for item in cases.split(', '):
                         colon=item.index(':')
@@ -155,20 +172,25 @@ class CfgFunc(object):
                             self._edges.append((blocklabel,item[colon+2:],"%s == %s" % (var,item[0:colon])))
                         else:
                             self._log.error('CfgFunc:RegExPattern:'+states[-1])
-                    self._block[blocklabel]='\\l'.join(states[1:-1])+'\\l'
+                    self._block[blocklabel]=tuple(states[1:-1])
                 else:
                     self._log.error('CfgFunc:switch-CodeBlock:'+':'.join(states))
             elif states[-1].startswith('  return'):
                 # pattern 4
                 self._lastlabel=blocklabel
-                self._block[blocklabel]='\\l'.join(states[1:])+'\\l'
-                pass
+                self._block[blocklabel]=tuple(states[1:])
+                if len(states[-1])>9:
+                    var=states[-1][9:-1]
+                    if var in self._localvars['auto1']:
+                        self._localvars['auto2'].append(var)
+                        self._localvars['auto1'].remove(var)
+                else:
+                    # void function
+                    pass
             else:
                 # pattern 5
                 self._prevlabel=blocklabel
-                self._block[blocklabel]='\\l'.join(states[1:])+'\\l'
-            # fix parse error for firefox
-            self._block[blocklabel]=self._block[blocklabel].replace(r'&',r'&amp;amp;')
+                self._block[blocklabel]=tuple(states[1:])
     def toDot(self):
         outtext="digraph %s {\n\tnode [shape=\"box\"];\n" % self._funcname
         for item in self._edges:
@@ -177,16 +199,51 @@ class CfgFunc(object):
                 outtext+=" [label=\"%s\"]" % item[2]
             outtext+=";\n"
         outtext+="\tEntry -> %s;\n" % self._firstlabel
-        outtext+="\t%s -> Exit;\n" % self._lastlabel
+        if self._lastlabel:
+            outtext+="\t%s -> Exit;\n" % self._lastlabel
+            outtext+="\t%s [shape=\"Mdiamond\"];\n"%('Exit')
         for (key,value) in (sorted(self._block.iteritems())):
-            outtext+="\t%s [label=\"%s\"];\n"%(key,value)
+            value2='\\l'.join(value)+'\\l'
+            # fix parse error for firefox
+            value2=value2.replace(r'&',r'&amp;amp;')
+            outtext+="\t%s [label=\"%s\"];\n"%(key,value2)
         outtext+="\t%s [shape=\"ellipse\",label=\"%s\"];\n"%('Entry',self._funcname+'('+','.join(self._params)+')')
-        outtext+="\t%s [shape=\"Mdiamond\"];\n"%('Exit')
         outtext+="}\n"
         return outtext
+    def simplify(self):
+        value_auto1={}
+        for states in self._block.values():
+            for state in states:
+                ret1=self._re_asign1.search(state)
+                ret2=self._re_asign2.search(state)
+                ret3=self._re_asign3.search(state)
+                ret4=self._re_asign4.search(state)
+                if ret1:
+                    dst=ret1.group('dst')
+                    if dst in self._localvars['auto1']:
+                        value_auto1[dst]=ret1.group('src')
+                elif ret2:
+                    dst=ret2.group('dst')
+                    if dst in self._localvars['auto1']:
+                        value_auto1[dst]="%s %s %s" % (ret2.group('src1'),ret2.group('op'),ret2.group('src2'))
+                elif ret3:
+                    dst=ret3.group('dst')
+                    if dst in self._localvars['auto1']:
+                        value_auto1[dst]="%s (%s)" % (ret3.group('func'),ret3.group('params'))
+                elif ret4:
+                    pass
+                elif state.find('  return')>=0:
+                    pass
+                elif state.find('  // ')>=0:
+                    pass
+                else:
+                    self._log.error('CfgFunc:RegExPattern:'+state)
+        print("\n".join(["%s:%s" % (x,value_auto1[x]) for x in value_auto1]))
     def __str__(self):
         outtext=self._funcname+"\n\t"+",".join(self._params)
-        outtext+="\n\t"+",".join(self._localvars)
+        outtext+="\n\t"+",".join(self._localvars['manual'])
+        outtext+="\n\t"+",".join(self._localvars['auto1'])
+        outtext+="\n\t"+",".join(self._localvars['auto2'])
         outtext+="\n\t('First', '%s', '')" % self._firstlabel
         for x in self._edges:
             outtext+="\n\t"+str(x)
@@ -238,6 +295,10 @@ class CfgParser(object):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.WARNING)
     cfgfile='pii_src/pii_aplif.c.012t.cfg'
+    cfg=CfgParser(cfgfile)
     cfgfile='pii_src/pii_event.c.012t.cfg'
     cfg=CfgParser(cfgfile)
+    cfgfile='pii_src/pii_main.c.012t.cfg'
+    cfg=CfgParser(cfgfile)
+#    print(str(cfg))
     cfg.toDot()
