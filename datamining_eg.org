@@ -14,7 +14,7 @@
 | collede educated                      | Yes | No  |
 | professional or executive occupations | Yes | No  |
 | income > $75K                         | Yes | No  |
-| income > $100K                        | No  | Yes |
+| income > $100K                        | No  | No  |
 ** Fitness Scores for individuals
 *** Solution 1
 |                                       |        Yes |         No |      |      |
@@ -26,7 +26,7 @@
 | income > $75K                         |        21% |        79% | 0.21 | 0.79 |
 | income > $100K                        |         7% |        93% | 0.93 | 0.93 |
 |---------------------------------------+------------+------------+------+------|
-| Total                                 |            |            | 2.18 | 2.68 |
+| Total_Score                           |            |            | 2.18 | 2.68 |
 *** Solution 2
 |                  |         |        Yes |       |         |         No |       |      |      |
 |                  | Reader- |         US | Index | Reader- |         US | Index |  Amy |  Bob |
@@ -38,5 +38,4 @@
 | income > $75K    |     21% |       9.5% |  2.21 |     79% |      90.5% |  0.87 | 2.21 | 0.87 |
 | income > $100K   |      7% |       2.4% |  2.92 |     93% |      97.6% |  0.95 | 0.95 | 0.95 |
 |------------------+---------+------------+-------+---------+------------+-------+------+------|
-| Total            |         |            |       |         |            |       | 8.42 | 3.02 |
-
+| Total_Score      |         |            |       |         |            |       | 8.42 | 3.02 |
