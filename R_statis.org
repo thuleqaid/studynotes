@@ -1,0 +1,32 @@
+* Basic techeniques
+** Missing Value
+   1. Methods
+      + Remove the cases with unknowns
+      + Fill in the unknown values by exploring the correlations between variables
+      + Fill in the unknown values by exploring the similarity between cases
+      + Use tools that are able to handle these values
+   2. R commands
+	  + [[(mv2_1)][Count missing cases]]
+	  + [[(mv2_2)][Removing missing cases]]
+	  + [[(mv2_3)][Count unknown values in each rows]]
+	  + [[(mv2_4)][Fill with mean/median]]
+#+BEGIN_SRC R -n -r
+> nrow(tableset[!complete.cases(tableset),]) (ref:mv2_1)
+# complete.cases() produces a vector of Boolean values
+
+> new_tableset <- na.omit(tableset)  (ref:mv2_2)
+> new_tableset <- tableset[-c(drop_index1,drop_index2,...),]
+
+> apply(tableset,1,function(x) sum(is.na(x))) (ref:mv2_3)
+# apply(X,MARGIN,FUN,...)
+#   MARGIN: a vector giving the subscripts which the function will be applied over.
+#           for a matrix, 1 indicates rows, 2 indicates columns, c(1,2) indicates rows and columns
+#           when X has named dimnames, it can be a character wector selecting dimension names 
+#   ...   : optional params for FUN, eg paramX=valueX
+
+> tableset[is.na(tableset$somecolumn),"somecolumn"] <- mean(tableset$somecolumn, na.rm=T) (ref:mv2_4)
+# mean(X, trim=0, na.rm=FALSE, ... )
+#   trim : the fraction (0 to 0.5) of observations to be trimmed from each end of X before calculation
+#   na.rm: whether NA values should be stripped before calculation
+> tableset[is.na(tableset$somecolumn),"somecolumn"] <- median(tableset$somecolumn, na.rm=T) (ref:mv2_5)
+#+END_SRC
