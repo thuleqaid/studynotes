@@ -27,6 +27,8 @@ function bitcount(intdata) {
 
 function solve(data) {
 	var workarea=new Array(81);
+	var bittest=new Array(9);
+	var bitrecord=new Array(9);
 	var i,row,col,brow,bcol,counter,cdata;
 	// initialize working array
 	for(i=0;i<data.length;i++) {
@@ -37,6 +39,7 @@ function solve(data) {
 		}
 	}
 	
+	// strike out forbidden number
 	for(i=0;i<workarea.length;i++) {
 		row=Math.floor(i/9);
 		col=i%9;
@@ -71,6 +74,186 @@ function solve(data) {
 		}
 	}
 	
+	// rule of 1~9
+	// Row
+	for(row=0;row<9;row++) {
+		bittest[0]=0;
+		bittest[1]=0;
+		bittest[2]=0;
+		bittest[3]=0;
+		bittest[4]=0;
+		bittest[5]=0;
+		bittest[6]=0;
+		bittest[7]=0;
+		bittest[8]=0;
+		for(col=0;col<9;col++) {
+			i=row*9+col;
+			if((workarea[i]&0x1000)===0) {
+				if((workarea[i]&0x0001)>0) {
+					bittest[0]++;
+					bitrecord[0]=i;
+				}
+				if((workarea[i]&0x0002)>0) {
+					bittest[1]++;
+					bitrecord[1]=i;
+				}
+				if((workarea[i]&0x0004)>0) {
+					bittest[2]++;
+					bitrecord[2]=i;
+				}
+				if((workarea[i]&0x0008)>0) {
+					bittest[3]++;
+					bitrecord[3]=i;
+				}
+				if((workarea[i]&0x0010)>0) {
+					bittest[4]++;
+					bitrecord[4]=i;
+				}
+				if((workarea[i]&0x0020)>0) {
+					bittest[5]++;
+					bitrecord[5]=i;
+				}
+				if((workarea[i]&0x0040)>0) {
+					bittest[6]++;
+					bitrecord[6]=i;
+				}
+				if((workarea[i]&0x0080)>0) {
+					bittest[7]++;
+					bitrecord[7]=i;
+				}
+				if((workarea[i]&0x0100)>0) {
+					bittest[8]++;
+					bitrecord[8]=i;
+				}
+			}
+		}
+		for(col=0;col<9;col++) {
+			if(bittest[col]===1) {
+				workarea[bitrecord[col]]=(1<<col);
+			}
+		}
+	}
+	// Col
+	for(col=0;col<9;col++) {
+		bittest[0]=0;
+		bittest[1]=0;
+		bittest[2]=0;
+		bittest[3]=0;
+		bittest[4]=0;
+		bittest[5]=0;
+		bittest[6]=0;
+		bittest[7]=0;
+		bittest[8]=0;
+		for(row=0;row<9;row++) {
+			i=row*9+col;
+			if((workarea[i]&0x1000)===0) {
+				if((workarea[i]&0x0001)>0) {
+					bittest[0]++;
+					bitrecord[0]=i;
+				}
+				if((workarea[i]&0x0002)>0) {
+					bittest[1]++;
+					bitrecord[1]=i;
+				}
+				if((workarea[i]&0x0004)>0) {
+					bittest[2]++;
+					bitrecord[2]=i;
+				}
+				if((workarea[i]&0x0008)>0) {
+					bittest[3]++;
+					bitrecord[3]=i;
+				}
+				if((workarea[i]&0x0010)>0) {
+					bittest[4]++;
+					bitrecord[4]=i;
+				}
+				if((workarea[i]&0x0020)>0) {
+					bittest[5]++;
+					bitrecord[5]=i;
+				}
+				if((workarea[i]&0x0040)>0) {
+					bittest[6]++;
+					bitrecord[6]=i;
+				}
+				if((workarea[i]&0x0080)>0) {
+					bittest[7]++;
+					bitrecord[7]=i;
+				}
+				if((workarea[i]&0x0100)>0) {
+					bittest[8]++;
+					bitrecord[8]=i;
+				}
+			}
+		}
+		for(row=0;row<9;row++) {
+			if(bittest[row]===1) {
+				workarea[bitrecord[row]]=(1<<row);
+			}
+		}
+	}
+	// Block
+	for(brow=0;brow<3;brow++) {
+		for(bcol=0;bcol<3;bcol++) {
+			bittest[0]=0;
+			bittest[1]=0;
+			bittest[2]=0;
+			bittest[3]=0;
+			bittest[4]=0;
+			bittest[5]=0;
+			bittest[6]=0;
+			bittest[7]=0;
+			bittest[8]=0;
+			for(row=brow*3;row<brow*3+3;row++) {
+				for(col=bcol*3;col<bcol*3+3;col++) {
+					i=row*9+col;
+					if((workarea[i]&0x1000)===0) {
+						if((workarea[i]&0x0001)>0) {
+							bittest[0]++;
+							bitrecord[0]=i;
+						}
+						if((workarea[i]&0x0002)>0) {
+							bittest[1]++;
+							bitrecord[1]=i;
+						}
+						if((workarea[i]&0x0004)>0) {
+							bittest[2]++;
+							bitrecord[2]=i;
+						}
+						if((workarea[i]&0x0008)>0) {
+							bittest[3]++;
+							bitrecord[3]=i;
+						}
+						if((workarea[i]&0x0010)>0) {
+							bittest[4]++;
+							bitrecord[4]=i;
+						}
+						if((workarea[i]&0x0020)>0) {
+							bittest[5]++;
+							bitrecord[5]=i;
+						}
+						if((workarea[i]&0x0040)>0) {
+							bittest[6]++;
+							bitrecord[6]=i;
+						}
+						if((workarea[i]&0x0080)>0) {
+							bittest[7]++;
+							bitrecord[7]=i;
+						}
+						if((workarea[i]&0x0100)>0) {
+							bittest[8]++;
+							bitrecord[8]=i;
+						}
+					}
+				}
+			}
+			for(row=0;row<9;row++) {
+				if(bittest[row]===1) {
+					workarea[bitrecord[row]]=(1<<row);
+				}
+			}
+		}
+	}
+
 	// count new data
 	counter=0;
 	for(i=0;i<workarea.length;i++) {
@@ -81,7 +264,6 @@ function solve(data) {
 			}
 		}
 	}
-	
 	if(counter>0) {
 		// set data array based on working array
 		for(i=0;i<workarea.length;i++) {
@@ -98,6 +280,7 @@ function printdata(data) {
 	}
 }
 var data=new Array(81);
+var counter;
 data[0]=0;
 data[1]=0;
 data[2]=3;
@@ -188,5 +371,11 @@ data[78]=0;
 data[79]=0;
 data[80]=0;
 printdata(data);
-print(solve(data));
+counter=solve(data);
+print(counter);
+while(counter>0) {
+	printdata(data);
+	counter=solve(data);
+	print(counter);
+}
 printdata(data);
