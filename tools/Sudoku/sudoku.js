@@ -64,190 +64,55 @@ function strikeout(workarea) {
 }
 
 function basicrule(workarea) {
-	var bittest=new Array(9);
-	var bitrecord=new Array(9);
-	var i,row,col,brow,bcol;
+	var bitrow=new Array(9);
+	var bitcol=new Array(9);
+	var bitblock=new Array(9);
+	var recordrow=new Array(9);
+	var recordcol=new Array(9);
+	var recordblock=new Array(9);
+	var i,j,row,col,block;
+	// initialize flags
+	for(i=0;i<9;i++) {
+		bitrow[i]=[0,0,0,0,0,0,0,0,0];
+		bitcol[i]=[0,0,0,0,0,0,0,0,0];
+		bitblock[i]=[0,0,0,0,0,0,0,0,0];
+		recordrow[i]=new Array(9);
+		recordcol[i]=new Array(9);
+		recordblock[i]=new Array(9);
+	}
 	// rule of 1~9
-	// Row
-	for(row=0;row<9;row++) {
-		bittest[0]=0;
-		bittest[1]=0;
-		bittest[2]=0;
-		bittest[3]=0;
-		bittest[4]=0;
-		bittest[5]=0;
-		bittest[6]=0;
-		bittest[7]=0;
-		bittest[8]=0;
-		for(col=0;col<9;col++) {
-			i=row*9+col;
-			if((workarea[i]&0x1000)===0) {
-				if((workarea[i]&0x0001)>0) {
-					bittest[0]++;
-					bitrecord[0]=i;
+	for(i=0;i<workarea.length;i++) {
+		row=Math.floor(i/9);
+		col=i%9;
+		block=Math.floor(row/3)*3+Math.floor(col/3);
+		if((workarea[i]&0x1000)===0) {
+			for(j=0;j<9;j++) {
+				if((workarea[i]&(1<<j))>0) {
+					bitrow[row][j]++;
+					bitcol[col][j]++;
+					bitblock[block][j]++;
+					recordrow[row][j]=i;
+					recordcol[col][j]=i;
+					recordblock[block][j]=i;
 				}
-				if((workarea[i]&0x0002)>0) {
-					bittest[1]++;
-					bitrecord[1]=i;
-				}
-				if((workarea[i]&0x0004)>0) {
-					bittest[2]++;
-					bitrecord[2]=i;
-				}
-				if((workarea[i]&0x0008)>0) {
-					bittest[3]++;
-					bitrecord[3]=i;
-				}
-				if((workarea[i]&0x0010)>0) {
-					bittest[4]++;
-					bitrecord[4]=i;
-				}
-				if((workarea[i]&0x0020)>0) {
-					bittest[5]++;
-					bitrecord[5]=i;
-				}
-				if((workarea[i]&0x0040)>0) {
-					bittest[6]++;
-					bitrecord[6]=i;
-				}
-				if((workarea[i]&0x0080)>0) {
-					bittest[7]++;
-					bitrecord[7]=i;
-				}
-				if((workarea[i]&0x0100)>0) {
-					bittest[8]++;
-					bitrecord[8]=i;
-				}
-			}
-		}
-		for(col=0;col<9;col++) {
-			if(bittest[col]===1) {
-				workarea[bitrecord[col]]=(1<<col);
 			}
 		}
 	}
-	// Col
-	for(col=0;col<9;col++) {
-		bittest[0]=0;
-		bittest[1]=0;
-		bittest[2]=0;
-		bittest[3]=0;
-		bittest[4]=0;
-		bittest[5]=0;
-		bittest[6]=0;
-		bittest[7]=0;
-		bittest[8]=0;
-		for(row=0;row<9;row++) {
-			i=row*9+col;
-			if((workarea[i]&0x1000)===0) {
-				if((workarea[i]&0x0001)>0) {
-					bittest[0]++;
-					bitrecord[0]=i;
-				}
-				if((workarea[i]&0x0002)>0) {
-					bittest[1]++;
-					bitrecord[1]=i;
-				}
-				if((workarea[i]&0x0004)>0) {
-					bittest[2]++;
-					bitrecord[2]=i;
-				}
-				if((workarea[i]&0x0008)>0) {
-					bittest[3]++;
-					bitrecord[3]=i;
-				}
-				if((workarea[i]&0x0010)>0) {
-					bittest[4]++;
-					bitrecord[4]=i;
-				}
-				if((workarea[i]&0x0020)>0) {
-					bittest[5]++;
-					bitrecord[5]=i;
-				}
-				if((workarea[i]&0x0040)>0) {
-					bittest[6]++;
-					bitrecord[6]=i;
-				}
-				if((workarea[i]&0x0080)>0) {
-					bittest[7]++;
-					bitrecord[7]=i;
-				}
-				if((workarea[i]&0x0100)>0) {
-					bittest[8]++;
-					bitrecord[8]=i;
-				}
+	// update working array
+	for(i=0;i<9;i++) {
+		for(j=0;j<9;j++) {
+			if(bitrow[i][j]===1) {
+				workarea[recordrow[i][j]]=(1<<j);
 			}
-		}
-		for(row=0;row<9;row++) {
-			if(bittest[row]===1) {
-				workarea[bitrecord[row]]=(1<<row);
+			if(bitcol[i][j]===1) {
+				workarea[recordcol[i][j]]=(1<<j);
 			}
-		}
-	}
-	// Block
-	for(brow=0;brow<3;brow++) {
-		for(bcol=0;bcol<3;bcol++) {
-			bittest[0]=0;
-			bittest[1]=0;
-			bittest[2]=0;
-			bittest[3]=0;
-			bittest[4]=0;
-			bittest[5]=0;
-			bittest[6]=0;
-			bittest[7]=0;
-			bittest[8]=0;
-			for(row=brow*3;row<brow*3+3;row++) {
-				for(col=bcol*3;col<bcol*3+3;col++) {
-					i=row*9+col;
-					if((workarea[i]&0x1000)===0) {
-						if((workarea[i]&0x0001)>0) {
-							bittest[0]++;
-							bitrecord[0]=i;
-						}
-						if((workarea[i]&0x0002)>0) {
-							bittest[1]++;
-							bitrecord[1]=i;
-						}
-						if((workarea[i]&0x0004)>0) {
-							bittest[2]++;
-							bitrecord[2]=i;
-						}
-						if((workarea[i]&0x0008)>0) {
-							bittest[3]++;
-							bitrecord[3]=i;
-						}
-						if((workarea[i]&0x0010)>0) {
-							bittest[4]++;
-							bitrecord[4]=i;
-						}
-						if((workarea[i]&0x0020)>0) {
-							bittest[5]++;
-							bitrecord[5]=i;
-						}
-						if((workarea[i]&0x0040)>0) {
-							bittest[6]++;
-							bitrecord[6]=i;
-						}
-						if((workarea[i]&0x0080)>0) {
-							bittest[7]++;
-							bitrecord[7]=i;
-						}
-						if((workarea[i]&0x0100)>0) {
-							bittest[8]++;
-							bitrecord[8]=i;
-						}
-					}
-				}
-			}
-			for(row=0;row<9;row++) {
-				if(bittest[row]===1) {
-					workarea[bitrecord[row]]=(1<<row);
-				}
+			if(bitblock[i][j]===1) {
+				workarea[recordblock[i][j]]=(1<<j);
 			}
 		}
 	}
 }
-
 function countnew(workarea) {
 	// count new data
 	var i,counter;
@@ -285,13 +150,7 @@ function updatebase(workarea,data) {
 	}
 }
 
-function solveonce(data) {
-	var workarea=new Array(81);
-	var counter;
-
-	// initialize working array
-	makeworkarea(data,workarea);
-
+function solveonce(workarea) {
 	// strike out forbidden number
 	strikeout(workarea);
 
@@ -299,13 +158,7 @@ function solveonce(data) {
 	basicrule(workarea);
 
 	// count new data
-	counter=countnew(workarea);
-
-	if(counter>0) {
-		// set data array based on working array
-		updatebase(workarea,data);
-	}
-	return counter;
+	return countnew(workarea);
 }
 
 function countunfinish(data) {
@@ -418,14 +271,27 @@ function inputproblem(data) {
 }
 function main() {
 	var data=new Array(81);
+	var workarea=new Array(81);
 	var counter;
+
+	// initialize base array
 	inputproblem(data);
+	// initialize working array
+	makeworkarea(data,workarea);
 	printdata(data);
-	counter=solveonce(data);
+	counter=solveonce(workarea);
+	if(counter>0) {
+		// set data array based on working array
+		updatebase(workarea,data);
+	}
 	print(counter);
 	while(counter>0) {
 		printdata(data);
-		counter=solveonce(data);
+		counter=solveonce(workarea);
+		if(counter>0) {
+			// set data array based on working array
+			updatebase(workarea,data);
+		}
 		print(counter);
 		if(countunfinish(data)===0) {
 			break;
