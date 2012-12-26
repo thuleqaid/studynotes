@@ -1,0 +1,64 @@
+.grid {
+	display:table;
+	border-collapse:separate;
+	border-spacing:1em;
+}
+.row {
+	display:table-row;
+}
+.cell {
+	display:table-cell;
+}
+
+#sudoku table {
+	border:black solid;
+	border-collapse:collapse;
+}
+
+#sudoku td {
+	border:black solid;
+	width:40px;
+	height:40px;
+	font:20px Arial;
+	text-align:center;
+	padding:0px;
+}
+
+#sudoku-number table {
+	border:black solid;
+	border-collapse:collapse;
+}
+#sudoku-number td {
+	border:black solid;
+	width:40px;
+	height:40px;
+	font:20px Arial;
+	text-align:center;
+	padding:0px;
+}
+
+#sudoku-tool table {
+	border:black solid;
+	border-collapse:collapse;
+}
+#sudoku-tool td {
+	border:black solid;
+	width:40px;
+	height:40px;
+	font:20px Arial;
+	text-align:center;
+	padding:0px;
+}
+
+.hltd0 {
+	background-color:red;
+}
+.hltd1 {
+	background-color:yellow;
+}
+.hltd2 {
+	background-color:blue;
+}
+.hltd3 {
+	background-color:gray;
+}
