@@ -1,0 +1,14 @@
+~/.ssh/id_rsa
+~/.ssh/id_rsa.pub
+
+ssh -T -p 443 git@ssh.github.com
+
+~/.ssh/config
+Host github.com
+  Hostname ssh.github.com
+  Port 443
+
+ssh -T git@ssh.github.com
+
+git@github.com:thuleqaid/studynotes.git
+https://github.com/thuleqaid/studynotes.git
