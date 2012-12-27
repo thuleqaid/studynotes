@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<script>
+	var childfunc=[];
+	function test () {
+		childfunc.setcolor('red',['Entry','bb 2','bb 3','END','Exit']);
+	}
+	function register(funcname,funcref) {
+		childfunc[funcname]=funcref;
+	}
+</script>
+<body>
+	<button onclick="test()">test</button><br>
+	<object id="svg" type="image/svg+xml" data="pii_piists_snd.dot.svg">
+	<p>Sorry! Your browser does not support SVG!
+	Please use a modern browser.</p>
+	</object>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE HTML>
+<html lang = "en">
+    <head>
+        <title>Sudoku</title>
+        <meta charset = "UTF-8" />
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <script src="jquery-1.7.1.min.js"></script>
+        <script src="sudoku-view.js"></script>
+	<script>
+            var id_t="",id="";
+            function toggleGroupClass(currentid,funcname,class0,class1,class2,class3) {
+                var idlist=getRelationId(currentid);
+                for(var i=0;i<idlist[0].length;i++) {
+                    $("#"+idlist[0][i])[funcname](class1);
+                }
+                for(i=0;i<idlist[1].length;i++) {
+                    $("#"+idlist[1][i])[funcname](class2);
+                }
+                for(i=0;i<idlist[2].length;i++) {
+                    $("#"+idlist[2][i])[funcname](class3);
+                }
+                $("#"+currentid)[funcname](class0);
+            }
+            function click_sudoku(clickid) {
+                if (id!=="") {
+                    toggleGroupClass(id,"removeClass","hltd0","hltd1","hltd2","hltd3");
+                }
+                id=clickid;
+                if (id!=="") {
+                    toggleGroupClass(id,"addClass","hltd0","hltd1","hltd2","hltd3");
+                }
+            }
+            function click_sudoku_tool(clickid) {
+                if (id_t!=="") {
+                    $("#"+id_t).removeClass("hltd0");
+                }
+                id_t=clickid;
+                if (id_t!=="") {
+                    $("#"+id_t).addClass("hltd0");
+                }
+            }
+            function init_sudoku() {
+                $("#sudoku").append("<table> \
+                                         <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> \
+                                         <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> \
+                                         <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> \
+                                         <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> \
+                                         <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> \
+                                         <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> \
+                                         <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> \
+                                         <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> \
+                                         <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> \
+                                     </table>");
+                var sudokutd=$("#sudoku td");
+                sudokutd.each(function(idx) {
+                    $(this).attr("id",idx);
+                });
+                sudokutd.click(function() {
+                    var currentid=$(this).attr("id");
+                    click_sudoku(currentid);
+                });
+            }
+            function init_sudoku_number() {
+                $("#sudoku-number").append("<table> \
+                                         <tr><td>1</td></tr> \
+                                         <tr><td>2</td></tr> \
+                                         <tr><td>3</td></tr> \
+                                         <tr><td>4</td></tr> \
+                                         <tr><td>5</td></tr> \
+                                         <tr><td>6</td></tr> \
+                                         <tr><td>7</td></tr> \
+                                         <tr><td>8</td></tr> \
+                                         <tr><td>9</td></tr> \
+                                         <tr><td></td></tr> \
+                                     </table>");
+                var sudokuntd=$("#sudoku-number td");
+                sudokuntd.each(function(idx) {
+                    $(this).attr("id","n"+idx);
+                });
+                sudokuntd.click(function() {
+                    if (id!=="") {
+                        $("#"+id).text($(this).text());
+                        click_sudoku_tool("");
+                        click_sudoku("");
+                    }
+                });
+            }
+            function init_sudoku_tool() {
+                $("#sudoku-tool").append("<table> \
+                                         <tr><td>a</td></tr> \
+                                         <tr><td>b</td></tr> \
+                                         <tr><td>c</td></tr> \
+                                         <tr><td>d</td></tr> \
+                                         <tr><td>e</td></tr> \
+                                         <tr><td>f</td></tr> \
+                                         <tr><td>g</td></tr> \
+                                     </table>");
+                var sudokuttd=$("#sudoku-tool td");
+                sudokuttd.each(function(idx) {
+                    $(this).attr("id","t"+idx);
+                });
+                sudokuttd.click(function() {
+                    click_sudoku_tool($(this).attr("id"));
+                });
+            }
+            $(function() {
+                init_sudoku_number();
+                init_sudoku_tool();
+                init_sudoku();
+            });
+	</script>
+    </head>
+    <body>
+        <h1>A Basic Table</h1>
+        <div class="grid">
+            <div class="row">
+                <div id="sudoku-number" class="cell"></div>
+                <div id="sudoku-tool" class="cell"></div>
+                <div id="sudoku" class="cell"></div>
+            </div>
+        </div>
+    </body>
+</html>
