@@ -1,3 +1,31 @@
+function getGroupId(currentid,kind) {
+   var thisid=currentid;
+   var row=Math.floor(thisid/9);
+   var col=thisid%9;
+   var idx,i,bi;
+   var idlist=new Array();
+   if (kind===1) {
+       for(i=row*9;i<row*9+9;i++) {
+           idlist.push(i);
+       }
+   } else if (kind===2) {
+       for(i=col;i<81+col;i+=9) {
+           idlist.push(i);
+       }
+   } else {
+       for(bi=0;bi<9;bi++) {
+           if(bi<3) {
+               i=Math.floor(row/3)*3*9+Math.floor(col/3)*3+bi;
+           } else if(bi<6) {
+               i=Math.floor(row/3)*3*9+Math.floor(col/3)*3+bi+6;
+           } else {
+               i=Math.floor(row/3)*3*9+Math.floor(col/3)*3+bi+12;
+           }
+           idlist.push(i);
+       }
+   }
+   return idlist;
+}
 function bitposition(intdata) {
 	// get first bit position from bit0
 	var tempdata,counter;
@@ -27,36 +55,29 @@ function bitcount(intdata) {
 
 function strikeout(workarea) {
 	// strike out forbidden number
-	var i,row,col,brow,bcol,counter,cdata;
+	var i,row,col,block,counter,cdata;
 	for(i=0;i<workarea.length;i++) {
-		row=Math.floor(i/9);
-		col=i%9;
-		brow=Math.floor(row/3);
-		bcol=Math.floor(col/3);
 		if((workarea[i]&0x1000)>0) {
 			cdata=bitposition(workarea[i]&0x01ff)-1;
 			//Row
-			for(counter=row*9;counter<row*9+9;counter++) {
-				if((workarea[counter]&0x1000)===0) {
-					workarea[counter]=workarea[counter]&(~(1<<cdata));
+			row = getGroupId(i,1);
+			for(counter=0;counter<row.length;counter++) {
+				if((workarea[row[counter]]&0x1000)===0) {
+					workarea[row[counter]]=workarea[row[counter]]&(~(1<<cdata));
 				}
 			}
 			//Col
-			for(counter=col;counter<81+col;counter+=9) {
-				if((workarea[counter]&0x1000)===0) {
-					workarea[counter]=workarea[counter]&(~(1<<cdata));
+			col = getGroupId(i,2);
+			for(counter=0;counter<col.length;counter++) {
+				if((workarea[col[counter]]&0x1000)===0) {
+					workarea[col[counter]]=workarea[col[counter]]&(~(1<<cdata));
 				}
 			}
 			//Block
-			for(counter=brow*3*9+bcol*3;counter<brow*3*9+bcol*3+27;counter+=9) {
-				if((workarea[counter]&0x1000)===0) {
-					workarea[counter]=workarea[counter]&(~(1<<cdata));
-				}
-				if((workarea[counter+1]&0x1000)===0) {
-					workarea[counter+1]=workarea[counter+1]&(~(1<<cdata));
-				}
-				if((workarea[counter+2]&0x1000)===0) {
-					workarea[counter+2]=workarea[counter+2]&(~(1<<cdata));
+			block = getGroupId(i,3);
+			for(counter=0;counter<block.length;counter++) {
+				if((workarea[block[counter]]&0x1000)===0) {
+					workarea[block[counter]]=workarea[block[counter]]&(~(1<<cdata));
 				}
 			}
 		}
