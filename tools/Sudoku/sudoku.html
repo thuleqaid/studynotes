@@ -6,6 +6,7 @@
         <link rel="stylesheet" type="text/css" href="style.css">
         <script src="jquery-1.7.1.min.js"></script>
         <script src="sudoku-view.js"></script>
+        <script src="sudoku-solve.js"></script>
 	<script>
             var id_t="",id="";
             function toggleGroupClass(currentid,funcname,class0,class1,class2,class3) {
@@ -30,13 +31,67 @@
                     toggleGroupClass(id,"addClass","hltd0","hltd1","hltd2","hltd3");
                 }
             }
+            function clear_sudoku() {
+                var sudokutd=$("#sudoku td");
+                sudokutd.each(function(idx) {
+                    $(this).text("");
+                });
+            }
+            function get_sudoku() {
+                var sudokutd=$("#sudoku td");
+                var currentdata=new Array();
+                var temp;
+                sudokutd.each(function(idx) {
+                    temp=$(this).text();
+                    if (temp==="") {
+                        currentdata.push(0);
+                    } else {
+                        currentdata.push(0+temp);
+                    }
+                });
+                return currentdata;
+            }
+            function set_sudoku(indata) {
+                var sudokutd=$("#sudoku td");
+                var currentdata=new Array();
+                var temp;
+                sudokutd.each(function(idx) {
+                    temp=indata[idx];
+                    if (temp===0) {
+                        $(this).text("");
+                    } else {
+                        $(this).text(temp);
+                    }
+                });
+            }
             function click_sudoku_tool(clickid) {
                 if (id_t!=="") {
                     $("#"+id_t).removeClass("hltd0");
                 }
-                id_t=clickid;
-                if (id_t!=="") {
-                    $("#"+id_t).addClass("hltd0");
+                if (clickid==="t4") {
+                    id_t="";
+                    clear_sudoku();
+                } else if(clickid==="t6") {
+                    id_t="";
+	            var workarea=new Array(81);
+	            var counter,data;
+	            data=get_sudoku();
+	            makeworkarea(data,workarea);
+	            counter=solveonce(workarea);
+	            if(counter>0) {
+	            	updatebase(workarea,data);
+                        set_sudoku(data);
+                        if(countunfinish(data)===0) {
+                            alert("Finish!");
+                        }
+	            } else {
+                        alert("I cannot solve it any more!");
+                    }
+                } else {
+                    id_t=clickid;
+                    if (id_t!=="") {
+                        $("#"+id_t).addClass("hltd0");
+                    }
                 }
             }
             function init_sudoku() {
@@ -91,9 +146,9 @@
                                          <tr><td>b</td></tr> \
                                          <tr><td>c</td></tr> \
                                          <tr><td>d</td></tr> \
-                                         <tr><td>e</td></tr> \
-                                         <tr><td>f</td></tr> \
-                                         <tr><td>g</td></tr> \
+                                         <tr><td>Clear</td></tr> \
+                                         <tr><td>Generate</td></tr> \
+                                         <tr><td>Solve</td></tr> \
                                      </table>");
                 var sudokuttd=$("#sudoku-tool td");
                 sudokuttd.each(function(idx) {
