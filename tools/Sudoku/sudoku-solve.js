@@ -134,6 +134,49 @@ function basicrule(workarea) {
 		}
 	}
 }
+
+function pairs2(workarea) {
+	var i;
+	var row,col,block;
+	for (i=0;i<9;i++) {
+		row=getGroupId(i*9,1);
+		col=getGroupId(i,2);
+		block=getGroupId(i*12-Math.floor(i/3)*9,3);
+		dopairs2(workarea,row);
+		dopairs2(workarea,col);
+		dopairs2(workarea,block);
+	}
+}
+
+function dopairs2(workarea,idlist) {
+	var j,k;
+	var worktemp,workpair;
+	worktemp=new Array();
+	workpair=new Array();
+	for (j=0;j<idlist.length;j++) {
+		if((workarea[idlist[j]]&0x1000)===0) {
+			if(bitcount(workarea[idlist[j]])===2) {
+				k=worktemp.indexOf(workarea[idlist[j]]);
+				if(k>=0) {
+					workpair.push(workarea[idlist[j]]);
+				} else {
+					worktemp.push(workarea[idlist[j]]);
+				}
+			}
+		}
+	}
+	if (workpair.length>0) {
+		for (j=0;j<idlist.length;j++) {
+			for(k=0;k<workpair.length;k++) {
+				datamask=(~workpair[k]);
+				if((workarea[idlist[j]]&0x1000)===0) {
+					workarea[idlist[j]]=(workarea[idlist[j]] & datamask);
+				}
+			}
+		}
+	}
+}
+
 function countnew(workarea) {
 	// count new data
 	var i,counter;
@@ -178,6 +221,7 @@ function solveonce(workarea) {
 	// rule of 1~9
 	basicrule(workarea);
 
+	pairs2(workarea);
 	// count new data
 	return countnew(workarea);
 }
@@ -200,95 +244,17 @@ function printdata(data) {
 }
 
 function inputproblem(data) {
-	data[0]=0;
-	data[1]=0;
-	data[2]=3;
-	data[3]=0;
-	data[4]=9;
-	data[5]=4;
-	data[6]=0;
-	data[7]=8;
-	data[8]=2;
+    data[0] =0;data[1] =9;data[2] =3; data[3] =7;data[4] =2;data[5] =0; data[6] =5;data[7] =6;data[8] =8;
+    data[9] =2;data[10]=0;data[11]=8; data[12]=0;data[13]=6;data[14]=3; data[15]=9;data[16]=7;data[17]=1;
+    data[18]=0;data[19]=6;data[20]=7; data[21]=0;data[22]=8;data[23]=9; data[24]=4;data[25]=3;data[26]=2;
 
-	data[9] =0;
-	data[10]=0;
-	data[11]=5;
-	data[12]=1;
-	data[13]=7;
-	data[14]=2;
-	data[15]=0;
-	data[16]=3;
-	data[17]=0;
+    data[27]=3;data[28]=2;data[29]=4; data[30]=6;data[31]=1;data[32]=8; data[33]=7;data[34]=5;data[35]=9;
+    data[36]=9;data[37]=7;data[38]=5; data[39]=3;data[40]=4;data[41]=2; data[42]=8;data[43]=1;data[44]=6;
+    data[45]=6;data[46]=8;data[47]=1; data[48]=9;data[49]=7;data[50]=5; data[51]=2;data[52]=4;data[53]=3;
 
-	data[18]=0;
-	data[19]=9;
-	data[20]=2;
-	data[21]=0;
-	data[22]=0;
-	data[23]=6;
-	data[24]=1;
-	data[25]=0;
-	data[26]=5;
-
-	data[27]=0;
-	data[28]=5;
-	data[29]=0;
-	data[30]=0;
-	data[31]=0;
-	data[32]=1;
-	data[33]=9;
-	data[34]=0;
-	data[35]=8;
-
-	data[36]=0;
-	data[37]=8;
-	data[38]=6;
-	data[39]=0;
-	data[40]=2;
-	data[41]=0;
-	data[42]=7;
-	data[43]=5;
-	data[44]=0;
-
-	data[45]=3;
-	data[46]=0;
-	data[47]=9;
-	data[48]=7;
-	data[49]=0;
-	data[50]=0;
-	data[51]=0;
-	data[52]=6;
-	data[53]=0;
-
-	data[54]=9;
-	data[55]=0;
-	data[56]=8;
-	data[57]=2;
-	data[58]=0;
-	data[59]=0;
-	data[60]=3;
-	data[61]=1;
-	data[62]=0;
-
-	data[63]=0;
-	data[64]=2;
-	data[65]=0;
-	data[66]=8;
-	data[67]=1;
-	data[68]=3;
-	data[69]=5;
-	data[70]=0;
-	data[71]=0;
-
-	data[72]=5;
-	data[73]=3;
-	data[74]=0;
-	data[75]=9;
-	data[76]=6;
-	data[77]=0;
-	data[78]=0;
-	data[79]=0;
-	data[80]=0;
+    data[54]=0;data[55]=0;data[56]=2; data[57]=0;data[58]=9;data[59]=6; data[60]=0;data[61]=8;data[62]=7;
+    data[63]=8;data[64]=0;data[65]=6; data[66]=2;data[67]=5;data[68]=7; data[69]=0;data[70]=9;data[71]=4;
+    data[72]=7;data[73]=0;data[74]=9; data[75]=8;data[76]=3;data[77]=0; data[78]=6;data[79]=2;data[80]=5;
 }
 function main() {
 	var data=new Array(81);
