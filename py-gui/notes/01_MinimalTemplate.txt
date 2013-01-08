@@ -1,0 +1,66 @@
+Py-Gui -*- mode: org; -*-
+* Compare GUI Toolkits
+** wxWidgets
+#+begin_src python
+  import wx
+  class App(wx.App):
+      def OnInit(self):
+          frame=wx.Frame(parent=None,title='Bare')
+          # create sub-widgets
+          # connect widgets with events and signals
+          frame.Show()
+          return True
+  app=App(False)
+  app.MainLoop()
+#+end_src
+** GTK
+#+begin_src python
+  import pygtk
+  pygtk.require('2.0')
+  import gtk
+  class Base:
+      def __init__(self):
+          self.window=gtk.Window(gtk.WINDOW_TOPLEVEL)
+          # create sub-widgets
+          # connect widgets with events and signals
+          # show sub-widgets
+          self.window.show()
+      def main(self):
+          gtk.main()
+  if __name__=='__main__':
+      base=Base()
+      base.main()
+#+end_src
+** QT
+#+begin_src python
+  import sys
+  from PyQt4.QtCore import *
+  from PyQt4.QtGui import *
+  class Form(QDialog):
+      def __init__(self,parent=None):
+          super(Form,self).__init__(parent)
+          # create sub-widgets
+          # connect widgets with events and signals
+  app=QApplication(sys.argv)
+  form=Form()
+  form.show()
+  app.exec_()
+#+end_src
+* Design
+#+begin_src python
+  import simplegui-xxx as simplegui
+  class TestApp(simplegui.BasicApp):
+      def gengui(self):
+          # ToDo: Add code to construct gui
+          # set the toppest widget into self.window
+          pass
+      def show(self):
+          # ToDo: show the toppest widget
+          # Default[wx] : self.window.show()
+          # Default[gtk]: self.window.show()
+          # Default[qt] : self.window.Show()
+          pass
+  if __name__=='__main__':
+      app=TestApp()
+      app.run()
+#+end_src

@@ -1,0 +1,8 @@
+Py-Gui -*- mode: org; -*-
+* Object
+  + An uniform interface for python as a bridge for different GUI Toolkits.
+* GUI Toolkits
+  + wxWidgets
+  + GTK
+  + QT
+
