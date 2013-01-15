@@ -1,0 +1,78 @@
+Py-Gui -*- mode: org; -*-
+* Compare GUI Toolkits
+** wxWidgets
+#+begin_src python
+  class Dialog(wx.Frame):
+      def __init__(self,title='',width=-1,height=-1):
+          super(Dialog,self).__init__(None,wx.ID_ANY,title,wx.DefaultPosition,wx.Size(width,height),wx.DEFAULT_FRAME_STYLE,'Dialog')
+          self.setWidgets()
+          self.Bind(wx.EVT_CLOSE,self._onCloseEvent)
+      def _onCloseEvent(self,event):
+          if event.CanVeto():
+              self.closeEvent(event)
+          else:
+              self.acceptClose(event)
+      def closeEvent(self,event):
+          self.acceptClose(event)
+      def acceptClose(self,event):
+          self.Destroy()
+      def ignoreClose(self,event):
+          event.Veto()
+      def setWidgets(self):
+          self._panel=wx.Panel()
+          sizer=wx.BoxSizer(wx.VERTICAL)
+          sizer.Add(self._panel,1,wx.EXPAND)
+          self.SetSizer(sizer)
+#+end_src
+** GTK
+#+begin_src python
+  def main():
+      window=gtk.Window(gtk.WINDOW_TOPLEVEL)
+      window.set_title("Bare")
+      window.resize(200,100)
+      window.connect("delete_event", delete_event)
+      window.connect("destroy", destroy)
+      print(window.get_title())
+      print(window.get_size())
+  def destroy(widget,data=None):
+      # delete_event returns False -> destroy
+      gtk.main_quit()
+  def delete_event(widget,event,data=None):
+      # click "close" on title bar -> delete_event
+      return False
+#+end_src
+** QT
+#+begin_src python
+  class Dialog(QDialog):
+      def __init__(self, title='', width=-1, height=-1):
+          super(Dialog, self).__init__(None)
+          dial = QDial()
+          dial.setNotchesVisible(True)
+          spinbox = QSpinBox()
+          layout = QHBoxLayout()
+          layout.addWidget(dial)
+          layout.addWidget(spinbox)
+          self.setLayout(layout)
+          self.connect(dial, SIGNAL("valueChanged(int)"), spinbox.setValue)
+          self.connect(spinbox, SIGNAL("valueChanged(int)"), dial.setValue)
+          self.resize(400,200)
+          self.setWindowTitle("Signals and Slots")
+          print(self.windowTitle())
+          print(self.size())
+      def closeEvent(self, event):
+          self.acceptClose(event)
+      def acceptClose(self,event):
+          event.accept()
+      def ignoreClose(self,event):
+          event.ignore()
+#+end_src
+* Design
+** I/F
+   + setTitle(self,str)
+   + getTitle(self):str
+   + setSize(self,width,height)
+   + getSize(self):(width,height)
+   + setWidgets(self,container)
+   + acceptClose(self):bool
+   + doCloseEvent(self)
+   + show(self)
