@@ -12,12 +12,46 @@ class BasicApp(object):
         self.show()
         app.exec_()
 
-class SimpleWindow(object):
+class Widget(object):
+    def __init__(self):
+        self._widget=None
+    def getWidget(self):
+        return self._widget
+
+class Layout(object):
+    def __init__(self):
+        self._layout=None
+    def getLayout(self):
+        return self._layout
+
+class IWindow(Widget):
+    def __init__(self):
+        super(IWindow,self).__init__()
+    def setTitle(self,title):
+        pass
+    def getTitle(self):
+        pass
+    def setSize(self,width,height):
+        pass
+    def getSize(self):
+        pass
+    def doClose(self):
+        pass
+    def acceptClose(self):
+        return True
+    def setLayout(self,layout):
+        if isinstance(layout,Layout):
+            self._widget.setLayout(layout.getLayout())
+        else:
+            self._widget.setLayout(layout)
+    def show(self):
+        pass
+
+class SimpleWindow(IWindow):
     class InnerSimpleWindow(_QtGui.QDialog):
         def __init__(self,outter):
             self._outter=outter
             super(SimpleWindow.InnerSimpleWindow,self).__init__(None)
-            self._outter.setWidgets(self)
         def closeEvent(self, event):
             if self._outter.acceptClose():
                 self._outter.doClose()
@@ -25,21 +59,16 @@ class SimpleWindow(object):
             else:
                 event.ignore()
     def __init__(self):
-        self._window=SimpleWindow.InnerSimpleWindow(self)
+        super(SimpleWindow,self).__init__()
+        self._widget=SimpleWindow.InnerSimpleWindow(self)
     def setTitle(self,title):
-        self._window.setWindowTitle(title)
+        self._widget.setWindowTitle(title)
     def getTitle(self):
-        return self._window.windowTitle()
+        return self._widget.windowTitle()
     def setSize(self,width,height):
-        self._window.resize(width,height)
+        self._widget.resize(width,height)
     def getSize(self):
-        size=self._window.size()
+        size=self._widget.size()
         return (size.width(),size.height())
-    def doClose(self):
-        pass
-    def acceptClose(self):
-        return True
-    def setWidgets(self,container):
-        pass
     def show(self):
-        self._window.show()
+        self._widget.show()

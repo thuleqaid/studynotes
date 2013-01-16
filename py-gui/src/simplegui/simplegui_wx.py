@@ -18,12 +18,46 @@ class BasicApp(object):
         app=self.InnerApp(self)
         app.MainLoop()
 
-class SimpleWindow(object):
+class Widget(object):
+    def __init__(self):
+        self._widget=None
+    def getWidget(self):
+        return self._widget
+
+class Layout(object):
+    def __init__(self):
+        self._layout=None
+    def getLayout(self):
+        return self._layout
+
+class IWindow(Widget):
+    def __init__(self):
+        super(IWindow,self).__init__()
+    def setTitle(self,title):
+        pass
+    def getTitle(self):
+        pass
+    def setSize(self,width,height):
+        pass
+    def getSize(self):
+        pass
+    def doClose(self):
+        pass
+    def acceptClose(self):
+        return True
+    def setLayout(self,layout):
+        if isinstance(layout,Layout):
+            self._widget.SetSizer(layout.getLayout())
+        else:
+            self._widget.SetSizer(layout)
+    def show(self):
+        pass
+
+class SimpleWindow(IWindow):
     class InnerSimpleWindow(_wx.Frame):
         def __init__(self,outter):
             self._outter=outter
             super(SimpleWindow.InnerSimpleWindow,self).__init__(None,_wx.ID_ANY,"")
-            self._outter.setWidgets(self)
             self.Bind(_wx.EVT_CLOSE,self.onCloseEvent)
         def onCloseEvent(self, event):
             if event.CanVeto():
@@ -35,20 +69,41 @@ class SimpleWindow(object):
             else:
                 self.Destroy()
     def __init__(self):
-        self._window=SimpleWindow.InnerSimpleWindow(self)
+        super(SimpleWindow,self).__init__()
+        self._widget=SimpleWindow.InnerSimpleWindow(self)
     def setTitle(self,title):
-        self._window.SetTitle(title)
+        self._widget.SetTitle(title)
     def getTitle(self):
-        return self._window.GetTitle()
+        return self._widget.GetTitle()
     def setSize(self,width,height):
-        self._window.SetSize((width,height,))
+        self._widget.SetSize((width,height,))
     def getSize(self):
-        return self._window.GetSize()
-    def doClose(self):
-        pass
-    def acceptClose(self):
-        return True
-    def setWidgets(self,container):
-        pass
+        return self._widget.GetSize()
     def show(self):
-        self._window.Show()
+        self._widget.Show()
+
+class BoxLayout(Layout):
+    HORIZONTAL=1
+    VERTICAL=2
+    def __init__(self,orient=HORIZONTAL):
+        if orient==BoxLayout.VERTICAL:
+            self._layout=_wx.BoxSizer(_wx.VERTICAL)
+        else:
+            self._layout=_wx.BoxSizer(_wx.HORIZONTAL)
+    def add(self,widget):
+        if isinstance(widget,Widget):
+            self._layout.Add(widget.getWidget())
+        else:
+            self._layout.Add(widget)
+
+class Button(Widget):
+    class InnerButton(_wx.Button):
+        def __init__(self,outter,parent,label):
+            self._outter=outter
+            if isinstance(parent,IWindow):
+                super(Button.InnerButton,self).__init__(parent.getWidget(),_wx.ID_ANY,label)
+            else:
+                super(Button.InnerButton,self).__init__(parent,_wx.ID_ANY,label)
+    def __init__(self,parent,label=""):
+        super(Button,self).__init__()
+        self._widget=Button.InnerButton(self,parent,label)
