@@ -27,6 +27,8 @@ class Layout(object):
 class IWindow(Widget):
     def __init__(self):
         super(IWindow,self).__init__()
+        self._closeCheck=(IWindow._defaultCloseCheck,self,)
+        self._closeAction=(IWindow._defaultCloseAction,self,)
     def setTitle(self,title):
         pass
     def getTitle(self):
@@ -35,16 +37,34 @@ class IWindow(Widget):
         pass
     def getSize(self):
         pass
-    def doClose(self):
-        pass
-    def acceptClose(self):
-        return True
+    def setCbCloseCheck(self,checkfunc):
+        self._closeCheck=tuple(checkfunc)
+    def setCbCloseAction(self,actionfunc):
+        self._closeAction=tuple(actionfunc)
     def setLayout(self,layout):
         if isinstance(layout,Layout):
             self._widget.setLayout(layout.getLayout())
         else:
             self._widget.setLayout(layout)
     def show(self):
+        pass
+    def _doCloseCheck(self):
+        if self._closeCheck:
+            if len(self._closeCheck)>1:
+                return self._closeCheck[0](*self._closeCheck[1:])
+            else:
+                return self._closeCheck[0]()
+        else:
+            return True
+    def _doCloseAction(self):
+        if self._closeAction:
+            if len(self._closeAction)>1:
+                self._closeAction[0](*self._closeAction[1:])
+            else:
+                self._closeAction[0]()
+    def _defaultCloseCheck(self):
+        return True
+    def _defaultCloseAction(self):
         pass
 
 class SimpleWindow(IWindow):
@@ -53,8 +73,8 @@ class SimpleWindow(IWindow):
             self._outter=outter
             super(SimpleWindow.InnerSimpleWindow,self).__init__(None)
         def closeEvent(self, event):
-            if self._outter.acceptClose():
-                self._outter.doClose()
+            if self._outter._doCloseCheck():
+                self._outter._doCloseAction()
                 event.accept()
             else:
                 event.ignore()
