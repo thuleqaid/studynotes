@@ -89,17 +89,46 @@ class SimpleWindow(IWindow):
     def getTitle(self):
         return self._widget.get_title()
     def setSize(self,width,height):
+        if width<=0:
+            width=1
+        if height<=0:
+            height=1
         self._widget.resize(width,height)
     def getSize(self):
         return self._widget.get_size()
     def show(self):
-        self._widget.show()
+        self._widget.show_all()
 
 class BoxLayout(Layout):
     HORIZONTAL=1
     VERTICAL=2
     def __init__(self,orient=HORIZONTAL):
-        if orient==VERTICAL:
+        super(BoxLayout,self).__init__()
+        if orient==BoxLayout.VERTICAL:
             self._layout=_gtk.VBox()
         else:
             self._layout=_gtk.HBox()
+    def add(self,widget):
+        if isinstance(widget,Widget):
+            self._layout.pack_start(widget.getWidget())
+        elif isinstance(widget,Layout):
+            self._layout.pack_start(widget.getLayout())
+        else:
+            self._layout.pack_start(widget)
+
+class GridLayout(Layout):
+    def __init__(self,rows,cols):
+        super(GridLayout,self).__init__()
+        self._layout=_gtk.Table(rows,cols,True)
+    def add(self,widget,row,col,rowspan=1,colspan=1):
+        if isinstance(widget,Widget):
+            self._layout.attach(widget.getWidget(),col,col+colspan,row,row+rowspan)
+        elif isinstance(widget,Layout):
+            self._layout.attach(widget.getLayout(),col,col+colspan,row,row+rowspan)
+        else:
+            self._layout.attach(widget,col,col+colspan,row,row+rowspan)
+
+class Button(Widget):
+    def __init__(self,parent,label=""):
+        super(Button,self).__init__()
+        self._widget=_gtk.Button(label)

@@ -96,6 +96,11 @@ class SimpleWindow(IWindow):
     def getTitle(self):
         return self._widget.GetTitle()
     def setSize(self,width,height):
+        bestsize=self._widget.GetBestSize()
+        if width<=0:
+            width=bestsize.GetWidth()
+        if height<=0:
+            height=bestsize.GetHeight()
         self._widget.SetSize((width,height,))
     def getSize(self):
         return self._widget.GetSize()
@@ -106,6 +111,7 @@ class BoxLayout(Layout):
     HORIZONTAL=1
     VERTICAL=2
     def __init__(self,orient=HORIZONTAL):
+        super(BoxLayout,self).__init__()
         if orient==BoxLayout.VERTICAL:
             self._layout=_wx.BoxSizer(_wx.VERTICAL)
         else:
@@ -113,8 +119,22 @@ class BoxLayout(Layout):
     def add(self,widget):
         if isinstance(widget,Widget):
             self._layout.Add(widget.getWidget())
+        elif isinstance(widget,Layout):
+            self._layout.Add(widget.getLayout())
         else:
             self._layout.Add(widget)
+
+class GridLayout(Layout):
+    def __init__(self,rows,cols):
+        super(GridLayout,self).__init__()
+        self._layout=_wx.GridBagSizer()
+    def add(self,widget,row,col,rowspan=1,colspan=1):
+        if isinstance(widget,Widget):
+            self._layout.Add(widget.getWidget(),(row,col),(rowspan,colspan))
+        elif isinstance(widget,Layout):
+            self._layout.Add(widget.getLayout(),(row,col),(rowspan,colspan))
+        else:
+            self._layout.Add(widget,(row,col),(rowspan,colspan))
 
 class Button(Widget):
     class InnerButton(_wx.Button):

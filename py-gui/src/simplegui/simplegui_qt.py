@@ -44,7 +44,7 @@ class IWindow(Widget):
     def setLayout(self,layout):
         if isinstance(layout,Layout):
             self._widget.setLayout(layout.getLayout())
-        else:
+        elif isinstance(layout,_QtGui.QLayout):
             self._widget.setLayout(layout)
     def show(self):
         pass
@@ -86,9 +86,59 @@ class SimpleWindow(IWindow):
     def getTitle(self):
         return self._widget.windowTitle()
     def setSize(self,width,height):
+        bestsize=self._widget.minimumSize()
+        if width<=0:
+            width=bestsize.width()
+        if height<=0:
+            height=bestsize.height()
         self._widget.resize(width,height)
     def getSize(self):
         size=self._widget.size()
         return (size.width(),size.height())
     def show(self):
         self._widget.show()
+
+class BoxLayout(Layout):
+    HORIZONTAL=1
+    VERTICAL=2
+    def __init__(self,orient=HORIZONTAL):
+        super(BoxLayout,self).__init__()
+        if orient==BoxLayout.VERTICAL:
+            self._layout=_QtGui.QVBoxLayout()
+        else:
+            self._layout=_QtGui.QHBoxLayout()
+    def add(self,widget):
+        if isinstance(widget,Widget):
+            self._layout.addWidget(widget.getWidget())
+        elif isinstance(widget,Layout):
+            self._layout.addLayout(widget.getLayout())
+        elif isinstance(widget,_QtGui.QWidget):
+            self._layout.addWidget(widget)
+        elif isinstance(widget,_QtGui.QLayout):
+            self._layout.addLayout(widget)
+
+class GridLayout(Layout):
+    def __init__(self,rows,cols):
+        super(GridLayout,self).__init__()
+        self._layout=_QtGui.QGridLayout()
+    def add(self,widget,row,col,rowspan=1,colspan=1):
+        if isinstance(widget,Widget):
+            self._layout.addWidget(widget.getWidget(),row,col,rowspan,colspan)
+        elif isinstance(widget,Layout):
+            self._layout.addLayout(widget.getLayout(),row,col,rowspan,colspan)
+        elif isinstance(widget,_QtGui.QWidget):
+            self._layout.addWidget(widget,row,col,rowspan,colspan)
+        elif isinstance(widget,_QtGui.QLayout):
+            self._layout.addLayout(widget,row,col,rowspan,colspan)
+
+class Button(Widget):
+    class InnerButton(_QtGui.QPushButton):
+        def __init__(self,outter,parent,label):
+            self._outter=outter
+            if isinstance(parent,IWindow):
+                super(Button.InnerButton,self).__init__(label,parent.getWidget())
+            else:
+                super(Button.InnerButton,self).__init__(label,parent)
+    def __init__(self,parent,label=""):
+        super(Button,self).__init__()
+        self._widget=Button.InnerButton(self,parent,label)
