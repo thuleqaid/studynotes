@@ -1,4 +1,6 @@
+# -*- coding: utf-8 -*-
 import PyQt4.QtGui as _QtGui
+import simplegui_utils_qt as _utils
 
 class BasicApp(object):
     def gengui(self):
@@ -23,80 +25,6 @@ class Layout(object):
         self._layout=None
     def getLayout(self):
         return self._layout
-
-class IWindow(Widget):
-    def __init__(self):
-        super(IWindow,self).__init__()
-        self._closeCheck=(IWindow._defaultCloseCheck,self,)
-        self._closeAction=(IWindow._defaultCloseAction,self,)
-    def setTitle(self,title):
-        pass
-    def getTitle(self):
-        pass
-    def setSize(self,width,height):
-        pass
-    def getSize(self):
-        pass
-    def setCbCloseCheck(self,checkfunc):
-        self._closeCheck=tuple(checkfunc)
-    def setCbCloseAction(self,actionfunc):
-        self._closeAction=tuple(actionfunc)
-    def setLayout(self,layout):
-        if isinstance(layout,Layout):
-            self._widget.setLayout(layout.getLayout())
-        elif isinstance(layout,_QtGui.QLayout):
-            self._widget.setLayout(layout)
-    def show(self):
-        pass
-    def _doCloseCheck(self):
-        if self._closeCheck:
-            if len(self._closeCheck)>1:
-                return self._closeCheck[0](*self._closeCheck[1:])
-            else:
-                return self._closeCheck[0]()
-        else:
-            return True
-    def _doCloseAction(self):
-        if self._closeAction:
-            if len(self._closeAction)>1:
-                self._closeAction[0](*self._closeAction[1:])
-            else:
-                self._closeAction[0]()
-    def _defaultCloseCheck(self):
-        return True
-    def _defaultCloseAction(self):
-        pass
-
-class SimpleWindow(IWindow):
-    class InnerSimpleWindow(_QtGui.QDialog):
-        def __init__(self,outter):
-            self._outter=outter
-            super(SimpleWindow.InnerSimpleWindow,self).__init__(None)
-        def closeEvent(self, event):
-            if self._outter._doCloseCheck():
-                self._outter._doCloseAction()
-                event.accept()
-            else:
-                event.ignore()
-    def __init__(self):
-        super(SimpleWindow,self).__init__()
-        self._widget=SimpleWindow.InnerSimpleWindow(self)
-    def setTitle(self,title):
-        self._widget.setWindowTitle(title)
-    def getTitle(self):
-        return self._widget.windowTitle()
-    def setSize(self,width,height):
-        bestsize=self._widget.minimumSize()
-        if width<=0:
-            width=bestsize.width()
-        if height<=0:
-            height=bestsize.height()
-        self._widget.resize(width,height)
-    def getSize(self):
-        size=self._widget.size()
-        return (size.width(),size.height())
-    def show(self):
-        self._widget.show()
 
 class BoxLayout(Layout):
     HORIZONTAL=1
@@ -131,6 +59,62 @@ class GridLayout(Layout):
         elif isinstance(widget,_QtGui.QLayout):
             self._layout.addLayout(widget,row,col,rowspan,colspan)
 
+class IWindow(Widget):
+    def __init__(self):
+        super(IWindow,self).__init__()
+        self._closeCheck=None
+        self._closeAction=None
+    def setTitle(self,title):
+        pass
+    def getTitle(self):
+        pass
+    def setSize(self,width,height):
+        pass
+    def getSize(self):
+        pass
+    def setCbCloseCheck(self,checkfunc):
+        self._closeCheck=tuple(checkfunc)
+    def setCbCloseAction(self,actionfunc):
+        self._closeAction=tuple(actionfunc)
+    def setLayout(self,layout):
+        if isinstance(layout,Layout):
+            self._widget.setLayout(layout.getLayout())
+        elif isinstance(layout,_QtGui.QLayout):
+            self._widget.setLayout(layout)
+    def show(self):
+        pass
+
+class SimpleWindow(IWindow):
+    class InnerSimpleWindow(_QtGui.QDialog):
+        def __init__(self,outter):
+            self._outter=outter
+            super(SimpleWindow.InnerSimpleWindow,self).__init__(None)
+        def closeEvent(self, event):
+            if _utils.runFunc(True,self._outter._closeCheck):
+                _utils.runFunc(None,self._outter._closeAction)
+                event.accept()
+            else:
+                event.ignore()
+    def __init__(self):
+        super(SimpleWindow,self).__init__()
+        self._widget=SimpleWindow.InnerSimpleWindow(self)
+    def setTitle(self,title):
+        self._widget.setWindowTitle(_utils.utf8ToStr(title))
+    def getTitle(self):
+        return _utils.strToUtf8(self._widget.windowTitle())
+    def setSize(self,width,height):
+        bestsize=self._widget.minimumSize()
+        if width<=0:
+            width=bestsize.width()
+        if height<=0:
+            height=bestsize.height()
+        self._widget.resize(width,height)
+    def getSize(self):
+        size=self._widget.size()
+        return (size.width(),size.height())
+    def show(self):
+        self._widget.show()
+
 class Button(Widget):
     class InnerButton(_QtGui.QPushButton):
         def __init__(self,outter,parent,label):
@@ -139,6 +123,19 @@ class Button(Widget):
                 super(Button.InnerButton,self).__init__(label,parent.getWidget())
             else:
                 super(Button.InnerButton,self).__init__(label,parent)
+        def mousePressEvent(self,event):
+            _utils.runFunc(None,self._outter._click)
     def __init__(self,parent,label=""):
         super(Button,self).__init__()
         self._widget=Button.InnerButton(self,parent,label)
+        self._click=None
+    def setTitle(self,title):
+        self._widget.setText(_utils.utf8ToStr(title))
+    def getTitle(self):
+        return _utils.strToUtf8(self._widget.text())
+    def setEnabled(self,flag):
+        self._widget.setEnabled(flag)
+    def getEnabled(self):
+        return self._widget.isEnabled()
+    def setCbClick(self,clickfunc):
+        self._click=tuple(clickfunc)

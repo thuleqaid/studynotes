@@ -1,6 +1,8 @@
+# -*- coding: utf-8 -*-
 import pygtk as _pygtk
 _pygtk.require('2.0')
 import gtk as _gtk
+import simplegui_utils_gtk as _utils
 
 class BasicApp(object):
     def gengui(self):
@@ -24,80 +26,6 @@ class Layout(object):
         self._layout=None
     def getLayout(self):
         return self._layout
-
-class IWindow(Widget):
-    def __init__(self):
-        super(IWindow,self).__init__()
-        self._closeCheck=(IWindow._defaultCloseCheck,self,)
-        self._closeAction=(IWindow._defaultCloseAction,self,)
-    def setTitle(self,title):
-        pass
-    def getTitle(self):
-        pass
-    def setSize(self,width,height):
-        pass
-    def getSize(self):
-        pass
-    def setCbCloseCheck(self,checkfunc):
-        self._closeCheck=tuple(checkfunc)
-    def setCbCloseAction(self,actionfunc):
-        self._closeAction=tuple(actionfunc)
-    def setLayout(self,layout):
-        if isinstance(layout,Layout):
-            self._widget.add(layout.getLayout())
-        else:
-            self._widget.add(layout)
-    def show(self):
-        pass
-    def _doCloseCheck(self):
-        if self._closeCheck:
-            if len(self._closeCheck)>1:
-                return self._closeCheck[0](*self._closeCheck[1:])
-            else:
-                return self._closeCheck[0]()
-        else:
-            return True
-    def _doCloseAction(self):
-        if self._closeAction:
-            if len(self._closeAction)>1:
-                self._closeAction[0](*self._closeAction[1:])
-            else:
-                self._closeAction[0]()
-    def _defaultCloseCheck(self):
-        return True
-    def _defaultCloseAction(self):
-        pass
-
-class SimpleWindow(IWindow):
-    def __init__(self):
-        super(SimpleWindow,self).__init__()
-        self._widget=_gtk.Window(_gtk.WINDOW_TOPLEVEL)
-        self._widget.connect("delete_event",self._delete_event)
-        self._widget.connect("destroy",self._destroy)
-    def _destroy(self,widget,data=None):
-        # delete_event returns False -> destroy
-        _gtk.main_quit()
-    def _delete_event(self,widget,event,data=None):
-        # click "close" on title bar -> delete_event
-        if self._doCloseCheck():
-            self._doCloseAction()
-            return False
-        else:
-            return True
-    def setTitle(self,title):
-        self._widget.set_title(title)
-    def getTitle(self):
-        return self._widget.get_title()
-    def setSize(self,width,height):
-        if width<=0:
-            width=1
-        if height<=0:
-            height=1
-        self._widget.resize(width,height)
-    def getSize(self):
-        return self._widget.get_size()
-    def show(self):
-        self._widget.show_all()
 
 class BoxLayout(Layout):
     HORIZONTAL=1
@@ -128,7 +56,77 @@ class GridLayout(Layout):
         else:
             self._layout.attach(widget,col,col+colspan,row,row+rowspan)
 
+class IWindow(Widget):
+    def __init__(self):
+        super(IWindow,self).__init__()
+        self._closeCheck=None
+        self._closeAction=None
+    def setTitle(self,title):
+        pass
+    def getTitle(self):
+        pass
+    def setSize(self,width,height):
+        pass
+    def getSize(self):
+        pass
+    def setCbCloseCheck(self,checkfunc):
+        self._closeCheck=tuple(checkfunc)
+    def setCbCloseAction(self,actionfunc):
+        self._closeAction=tuple(actionfunc)
+    def setLayout(self,layout):
+        if isinstance(layout,Layout):
+            self._widget.add(layout.getLayout())
+        else:
+            self._widget.add(layout)
+    def show(self):
+        pass
+
+class SimpleWindow(IWindow):
+    def __init__(self):
+        super(SimpleWindow,self).__init__()
+        self._widget=_gtk.Window(_gtk.WINDOW_TOPLEVEL)
+        self._widget.connect("delete_event",self._delete_event)
+        self._widget.connect("destroy",self._destroy)
+    def _destroy(self,widget,data=None):
+        # delete_event returns False -> destroy
+        _gtk.main_quit()
+    def _delete_event(self,widget,event,data=None):
+        # click "close" on title bar -> delete_event
+        if _utils.runFunc(True,self._closeCheck):
+            _utils.runFunc(None,self._closeAction)
+            return False
+        else:
+            return True
+    def setTitle(self,title):
+        self._widget.set_title(_utils.utf8ToStr(title))
+    def getTitle(self):
+        return _utils.strToUtf8(self._widget.get_title())
+    def setSize(self,width,height):
+        if width<=0:
+            width=1
+        if height<=0:
+            height=1
+        self._widget.resize(width,height)
+    def getSize(self):
+        return self._widget.get_size()
+    def show(self):
+        self._widget.show_all()
+
 class Button(Widget):
     def __init__(self,parent,label=""):
         super(Button,self).__init__()
         self._widget=_gtk.Button(label)
+        self._widget.connect("clicked",self.onClickEvent)
+        self._click=None
+    def onClickEvent(self,widget,data=None):
+        _utils.runFunc(None,self._click)
+    def setTitle(self,title):
+        self._widget.set_label(_utils.utf8ToStr(title))
+    def getTitle(self):
+        return _utils.strToUtf8(self._widget.get_label())
+    def setEnabled(self,flag):
+        self._widget.set_sensitive(flag)
+    def getEnabled(self):
+        return self._widget.get_sensitive()
+    def setCbClick(self,clickfunc):
+        self._click=tuple(clickfunc)
