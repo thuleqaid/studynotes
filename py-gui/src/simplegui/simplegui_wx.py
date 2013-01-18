@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import wx as _wx
-import simplegui_utils_qt as _utils
+import simplegui_utils_wx as _utils
 
 class BasicApp(object):
     class InnerApp(_wx.App):
@@ -120,6 +120,68 @@ class SimpleWindow(IWindow):
     def show(self):
         self._widget.Show()
 
+class Label(Widget):
+    class InnerLabel(_wx.StaticText):
+        def __init__(self,outter,parent,label):
+            self._outter=outter
+            if isinstance(parent,IWindow):
+                super(Label.InnerLabel,self).__init__(parent.getWidget(),_wx.ID_ANY,label)
+            else:
+                super(Label.InnerLabel,self).__init__(parent,_wx.ID_ANY,label)
+    def __init__(self,parent,label=""):
+        super(Label,self).__init__()
+        self._widget=Label.InnerLabel(self,parent,_utils.utf8ToStr(label))
+    def setTitle(self,title):
+        self._widget.SetLabel(_utils.utf8ToStr(title))
+    def getTitle(self):
+        return _utils.strToUtf8(self._widget.GetLabel())
+
+class InnerTextEntry(_wx.TextCtrl):
+    def __init__(self,outter,parent,label,style):
+        self._outter=outter
+        style=style | _wx.TE_PROCESS_ENTER
+        if isinstance(parent,IWindow):
+            super(InnerTextEntry,self).__init__(parent.getWidget(),_wx.ID_ANY,label,style=style)
+        else:
+            super(InnerTextEntry,self).__init__(parent,_wx.ID_ANY,label,style=style)
+        self.Bind(_wx.EVT_SET_FOCUS,self.focusInEvent)
+        self.Bind(_wx.EVT_KILL_FOCUS,self.focusOutEvent)
+        self.Bind(_wx.EVT_TEXT,self.textEdited)
+        self.Bind(_wx.EVT_TEXT_ENTER,self.returnPressed)
+    def focusInEvent(self,event):
+        _utils.runFunc(None,self._outter._focusIn)
+    def focusOutEvent(self,event):
+        _utils.runFunc(None,self._outter._focusOut)
+    def textEdited(self,event):
+        _utils.runFunc(None,self._outter._textEdited)
+    def returnPressed(self,event):
+        _utils.runFunc(None,self._outter._returnPressed)
+
+class TextEntry(Widget):
+    def __init__(self,parent,label=""):
+        super(TextEntry,self).__init__()
+        self._widget=InnerTextEntry(self,parent,_utils.utf8ToStr(label),0)
+        self._focusIn=None
+        self._focusOut=None
+        self._textEdited=None
+        self._returnPressed=None
+    def setTitle(self,title):
+        self._widget.ChangeValue(_utils.utf8ToStr(title))
+    def getTitle(self):
+        return _utils.strToUtf8(self._widget.GetValue())
+    def setEnabled(self,flag):
+        self._widget.Enable(flag)
+    def getEnabled(self):
+        return self._widget.IsEnabled()
+    def setCbFocusIn(self,func):
+        self._focusIn=tuple(func)
+    def setCbFocusOut(self,func):
+        self._focusOut=tuple(func)
+    def setCbTextEdited(self,func):
+        self._textEdited=tuple(func)
+    def setCbReturnPressed(self,func):
+        self._returnPressed=tuple(func)
+
 class Button(Widget):
     class InnerButton(_wx.Button):
         def __init__(self,outter,parent,label):
@@ -133,7 +195,7 @@ class Button(Widget):
             _utils.runFunc(None,self._outter._click)
     def __init__(self,parent,label=""):
         super(Button,self).__init__()
-        self._widget=Button.InnerButton(self,parent,label)
+        self._widget=Button.InnerButton(self,parent,_utils.utf8ToStr(label))
         self._click=None
     def setTitle(self,title):
         self._widget.SetLabel(_utils.utf8ToStr(title))

@@ -112,10 +112,57 @@ class SimpleWindow(IWindow):
     def show(self):
         self._widget.show_all()
 
+class Label(Widget):
+    def __init__(self,parent,label=""):
+        super(Label,self).__init__()
+        self._widget=_gtk.Label(_utils.utf8ToStr(label))
+    def setTitle(self,title):
+        self._widget.set_text(_utils.utf8ToStr(title))
+    def getTitle(self):
+        return _utils.strToUtf8(self._widget.get_text())
+
+class TextEntry(Widget):
+    def __init__(self,parent,label=""):
+        super(TextEntry,self).__init__()
+        self._widget=_gtk.Entry()
+        self.setTitle(label)
+        self._widget.connect("changed",self.onTextEdited)
+        self._widget.connect("activate",self.onReturnPressed)
+        self._widget.connect("focus-in-event",self.onFocusInEvent)
+        self._widget.connect("focus-out-event",self.onFocusOutEvent)
+        self._focusIn=None
+        self._focusOut=None
+        self._textEdited=None
+        self._returnPressed=None
+    def setTitle(self,title):
+        self._widget.set_text(_utils.utf8ToStr(title))
+    def getTitle(self):
+        return _utils.strToUtf8(self._widget.get_text())
+    def onFocusInEvent(self,event):
+        _utils.runFunc(None,self._focusIn)
+    def onFocusOutEvent(self,event):
+        _utils.runFunc(None,self._focusOut)
+    def onTextEdited(self,event):
+        _utils.runFunc(None,self._textEdited)
+    def onReturnPressed(self,event):
+        _utils.runFunc(None,self._returnPressed)
+    def setEnabled(self,flag):
+        self._widget.set_editable(flag)
+    def getEnabled(self):
+        return self._widget.get_editable()
+    def setCbFocusIn(self,func):
+        self._focusIn=tuple(func)
+    def setCbFocusOut(self,func):
+        self._focusOut=tuple(func)
+    def setCbTextEdited(self,func):
+        self._textEdited=tuple(func)
+    def setCbReturnPressed(self,func):
+        self._returnPressed=tuple(func)
+
 class Button(Widget):
     def __init__(self,parent,label=""):
         super(Button,self).__init__()
-        self._widget=_gtk.Button(label)
+        self._widget=_gtk.Button(_utils.utf8ToStr(label))
         self._widget.connect("clicked",self.onClickEvent)
         self._click=None
     def onClickEvent(self,widget,data=None):

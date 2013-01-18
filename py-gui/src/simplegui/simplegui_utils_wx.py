@@ -9,7 +9,8 @@ def runFunc(defaultret,params):
     return ret
 
 def utf8ToStr(data):
-    return data.decode('UTF8')
+#    return data.decode('UTF8')
+    return data
 
 def strToUtf8(data):
     return data.encode('UTF8')

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import PyQt4.QtGui as _QtGui
+import PyQt4.QtCore as _QtCore
 import simplegui_utils_qt as _utils
 
 class BasicApp(object):
@@ -115,6 +116,64 @@ class SimpleWindow(IWindow):
     def show(self):
         self._widget.show()
 
+class Label(Widget):
+    class InnerLabel(_QtGui.QLabel):
+        def __init__(self,outter,parent,label):
+            self._outter=outter
+            if isinstance(parent,IWindow):
+                super(Label.InnerLabel,self).__init__(label,parent.getWidget())
+            else:
+                super(Label.InnerLabel,self).__init__(label,parent)
+    def __init__(self,parent,label=""):
+        super(Label,self).__init__()
+        self._widget=Label.InnerLabel(self,parent,_utils.utf8ToStr(label))
+    def setTitle(self,title):
+        self._widget.setText(_utils.utf8ToStr(title))
+    def getTitle(self):
+        return _utils.strToUtf8(self._widget.text())
+
+class TextEntry(Widget):
+    class InnerTextEntry(_QtGui.QLineEdit):
+        def __init__(self,outter,parent,label):
+            self._outter=outter
+            if isinstance(parent,IWindow):
+                super(TextEntry.InnerTextEntry,self).__init__(label,parent.getWidget())
+            else:
+                super(TextEntry.InnerTextEntry,self).__init__(label,parent)
+            self.connect(self,_QtCore.SIGNAL("textEdited(const QString&)"),self.textEdited)
+            self.connect(self,_QtCore.SIGNAL("returnPressed()"),self.returnPressed)
+        def focusInEvent(self,event):
+            _utils.runFunc(None,self._outter._focusIn)
+        def focusOutEvent(self,event):
+            _utils.runFunc(None,self._outter._focusOut)
+        def textEdited(self,text):
+            _utils.runFunc(None,self._outter._textEdited)
+        def returnPressed(self):
+            _utils.runFunc(None,self._outter._returnPressed)
+    def __init__(self,parent,label=""):
+        super(TextEntry,self).__init__()
+        self._widget=TextEntry.InnerTextEntry(self,parent,_utils.utf8ToStr(label))
+        self._focusIn=None
+        self._focusOut=None
+        self._textEdited=None
+        self._returnPressed=None
+    def setTitle(self,title):
+        self._widget.setText(_utils.utf8ToStr(title))
+    def getTitle(self):
+        return _utils.strToUtf8(self._widget.text())
+    def setEnabled(self,flag):
+        self._widget.setReadOnly(flag)
+    def getEnabled(self):
+        return self._widget.isReadOnly()
+    def setCbFocusIn(self,func):
+        self._focusIn=tuple(func)
+    def setCbFocusOut(self,func):
+        self._focusOut=tuple(func)
+    def setCbTextEdited(self,func):
+        self._textEdited=tuple(func)
+    def setCbReturnPressed(self,func):
+        self._returnPressed=tuple(func)
+
 class Button(Widget):
     class InnerButton(_QtGui.QPushButton):
         def __init__(self,outter,parent,label):
@@ -127,7 +186,7 @@ class Button(Widget):
             _utils.runFunc(None,self._outter._click)
     def __init__(self,parent,label=""):
         super(Button,self).__init__()
-        self._widget=Button.InnerButton(self,parent,label)
+        self._widget=Button.InnerButton(self,parent,_utils.utf8ToStr(label))
         self._click=None
     def setTitle(self,title):
         self._widget.setText(_utils.utf8ToStr(title))

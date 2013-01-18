@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import simplegui.simplegui_qt as simplegui
+import simplegui.simplegui_wx as simplegui
 
 class TestApp(simplegui.BasicApp):
     def gengui(self):
@@ -11,16 +11,26 @@ class TestApp(simplegui.BasicApp):
         btn2=simplegui.Button(self.window,"btn2")
         layout.add(btn1)
         layout.add(btn2)
-        layout2=simplegui.GridLayout(2,3)
+        layout2=simplegui.GridLayout(3,3)
         layout2.add(layout,0,0,1,3)
         btn3=simplegui.Button(self.window,"btn3")
         btn4=simplegui.Button(self.window,"btn4")
+        label=simplegui.Label(self.window,u"ラベル")
+        label2=simplegui.Label(self.window,u"ラベル")
+        lineedit=simplegui.TextEntry(self.window,u"ラベル")
         btn1.setCbClick((TestApp.btn1click,self,btn3))
         btn2.setCbClick((TestApp.btn2click,self,btn4))
         btn3.setCbClick((TestApp.btn3click,self,3))
         btn4.setCbClick((TestApp.btn4click,self,btn4))
+        lineedit.setCbFocusIn((TestApp.lineeditfocus,self,lineedit,' in'))
+        lineedit.setCbFocusOut((TestApp.lineeditfocus,self,lineedit,' out'))
+        lineedit.setCbTextEdited((TestApp.lineeditfocus,self,lineedit,' edit'))
+        lineedit.setCbReturnPressed((TestApp.lineeditfocus,self,lineedit,' return'))
         layout2.add(btn3,1,0)
         layout2.add(btn4,1,2)
+        layout2.add(label,1,1)
+        layout2.add(label2,2,0)
+        layout2.add(lineedit,2,1,1,2)
         self.window.setLayout(layout2)
         self.window.setSize(0,0)
         print(self.window.getTitle().decode('UTF8'))
@@ -36,6 +46,8 @@ class TestApp(simplegui.BasicApp):
         print("btn3 "+str(n))
     def btn4click(self,widget):
         print(widget.getTitle().decode('UTF8'))
+    def lineeditfocus(self,widget,state):
+        print(widget.getTitle().decode('UTF8')+str(state))
     def close(self,n):
         print("close "+str(n))
 if __name__=='__main__':
