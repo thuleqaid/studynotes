@@ -138,13 +138,13 @@ class TextEntry(Widget):
         self._widget.set_text(_utils.utf8ToStr(title))
     def getTitle(self):
         return _utils.strToUtf8(self._widget.get_text())
-    def onFocusInEvent(self,event):
+    def onFocusInEvent(self,event,data=None):
         _utils.runFunc(None,self._focusIn)
-    def onFocusOutEvent(self,event):
+    def onFocusOutEvent(self,event,data=None):
         _utils.runFunc(None,self._focusOut)
-    def onTextEdited(self,event):
+    def onTextEdited(self,event,data=None):
         _utils.runFunc(None,self._textEdited)
-    def onReturnPressed(self,event):
+    def onReturnPressed(self,event,data=None):
         _utils.runFunc(None,self._returnPressed)
     def setEnabled(self,flag):
         self._widget.set_editable(flag)
