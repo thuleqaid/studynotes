@@ -1,0 +1,128 @@
+(server-start)
+(add-to-list 'load-path "~/plugins")
+
+(setq inhibit-startup-message t)
+(setq frame-title-format "%b")
+
+(setq default-frame-alist '((width . 90) (height . 32)))
+(fset 'yes-or-no-p 'y-or-n-p)
+
+;;(require 'color-theme)
+;;(color-theme-arjen)
+;;(color-theme-simple-1)
+;;(color-theme-initialize)
+;;(color-theme-tty-dark)
+;;(color-theme-comidia)
+;;(color-theme-dark-laptop)
+
+(global-font-lock-mode 1)
+;(global-hl-line-mode 1)
+
+(setq read-quoted-char-radix 16)
+(setq transient-mark-mode t)
+(setq column-number-mode t)
+(setq line-number-mode t)
+(setq default-tab-width 4)
+(setq tab-width 4
+      indent-tabs-mode nil
+      c-basic-offset 4)
+(setq tab-stop-list (number-sequence 4 120 4))
+(define-key text-mode-map (kbd "<tab>") 'tab-to-tab-stop)
+(setq display-time-24hr-format t)
+(setq display-time-day-and-date t)
+(display-time)
+;(tool-bar-mode nil)
+(tool-bar-mode 0)
+;;inhibit bell, use splash instead
+(set-default 'visible-bell t)
+;;add new line in the end of file
+(setq require-final-newline t)
+(setq scroll-step 1
+	scroll-margin 3
+	scroll-conservatively 10000)
+
+(setq default-directory "d:/")
+;;version control
+(setq auto-save-interval 80)
+(setq make-backup-files t)
+(setq version-control t)
+(setq kept-new-versions 3)
+(setq delete-old-versions t)
+(setq kept-old-versions 2)
+(setq dired-kept-versions 1)
+;;delete auto-saved file when exit
+(setq delete-auto-save-files t)
+(setq backup-directory-alist '(("." . "~/.backup")))
+(setq appt-display-format 'window)
+(setq appt-display-duration 60)
+(setq appt-audible t)
+(setq appt-display-mode-line t)
+(appt-activate 1)
+(setq appt-issue-message t)
+(setq todo-file-do "~/.emacs.d/todo-do")
+(setq todo-file-done "~/.emacs.d/todo-done")
+(setq todo-file-top "~/.emacs.d/todo-top")
+
+;(setq whitespace-display-mappings
+;	  '((space-mark 32 [183] [46])
+;		(space-mark 160 [164] [95])
+;		(space-mark 2208 [2212] [95])
+;		(space-mark 2336 [2340] [95])
+;		(space-mark 3616 [3620] [95])
+;		(space-mark 3872 [3876] [95])
+;		(newline-mark 10 [182 10])
+;		(tab-mark 9 [9655 9] [92 9])))
+;(setq whitespace-line-column -1)
+;(add-hook 'find-file-hook '(lambda () (whitespace-mode 1)))
+
+(global-set-key [f5]  'speedbar)
+(global-set-key [f8]  'toggle-truncate-lines)
+
+(add-hook 'dired-load-hook
+          (lambda ()
+            (load "dired-x")
+            ;; Set dired-x global variables here.  For example:
+            ;; (setq dired-guess-shell-gnutar "gtar")
+            ;; (setq dired-x-hands-off-my-keys nil)
+            ))
+(add-hook 'dired-mode-hook
+          (lambda ()
+            ;; Set dired-x buffer-local variables here.  For example:
+            ;; (dired-omit-mode 1)
+            ))
+
+(setq inferior-R-program-name "C:/PROGRA~1/R/R-2.15.0/bin/i386/Rterm.exe"
+      ess-ask-for-ess-directory nil
+      ess-directory "~/R")
+(load "ess-12.04-4/lisp/ess-site.el")
+
+(add-to-list 'load-path "~/plugins/auto-complete")
+(require 'auto-complete-config)
+(add-to-list 'ac-dictionary-directories "~/plugins/auto-complete/ac-dict")
+(ac-config-default)
+
+(add-to-list 'load-path "~/plugins/evil")
+(require 'evil)
+(evil-mode 1)
+(add-to-list 'evil-emacs-state-modes 'dired-mode)
+(add-to-list 'evil-emacs-state-modes 'inferior-ess-mode)
+(add-to-list 'evil-emacs-state-modes 'org-mode)
+
+(require 'cedet)
+(add-to-list 'load-path "~/plugins/ecb-2.40")
+(setq stack-trace-on-error t)
+(require 'ecb-autoloads)
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(ecb-options-version "2.40"))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
+(require 'xcscope)
+(autoload 'typing-of-emacs "typing" "The Typing Of Emacs, a game." t)
