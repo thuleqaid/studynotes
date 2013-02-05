@@ -206,6 +206,15 @@ class SketchWindow(wx.Window):
             self.lineMode=1
         else:
             self.lineMode=2
+    def DrawUnitLine(self,screenx,screeny,unitlen):
+        startpos=self.ScreenToClient((screenx,screeny))
+        self.curLine=[(startpos.x,startpos.y+5,startpos.x+unitlen,startpos.y+5),]
+        self.lines.append(("red",3,self.curLine))
+        self.parent.SetStatusRight(self.CalcLength(self.curLine))
+        self.curLine=[]
+        self.pntcnt=0
+        dc=self.ClearScreen()
+        self.DrawLines(dc)
 
 class SketchStatusBar(wx.StatusBar):
     def __init__(self,parent):
@@ -229,15 +238,20 @@ class SketchStatusBar(wx.StatusBar):
         self.parent.SetThickness(self.slider.GetValue())
         self.btn=wx.Button(self,-1,"Clear",style=wx.NO_BORDER)
         self.Bind(wx.EVT_BUTTON,self.OnClear,self.btn)
+        self.SetMinHeight(24)
         self.Reposition()
     def OnToggleMode(self,event):
         self.parent.ToggleMode(self.cb.GetValue())
+        self.parent.sketch.SetFocus()
     def OnClear(self,event):
         self.parent.ClearScreen()
+        self.parent.sketch.SetFocus()
     def OnPickColor(self,event):
         self.parent.SetColor(self.cp.GetColour().GetAsString(wx.C2S_CSS_SYNTAX))
+        self.parent.sketch.SetFocus()
     def OnWidthChanged(self,event):
         self.parent.SetThickness(self.slider.GetValue())
+        self.parent.sketch.SetFocus()
     def OnSize(self,event):
         self.Reposition()
         self.sizeChanged=True
@@ -267,6 +281,9 @@ class SketchToolBar(wx.ToolBar):
     def __init__(self,parent):
         wx.ToolBar.__init__(self,parent)
         self.parent=parent
+        self.btn2=wx.Button(self,-1,"Detect Unit")
+        self.Bind(wx.EVT_BUTTON,self.OnDetectUnit,self.btn2)
+        self.AddControl(self.btn2)
         self.btn=wx.Button(self,-1,"Unit")
         self.Bind(wx.EVT_BUTTON,self.OnUnit,self.btn)
         self.AddControl(self.btn)
@@ -275,10 +292,49 @@ class SketchToolBar(wx.ToolBar):
         self.AddControl(self.slider)
         self.parent.SetTransparent(self.slider.GetValue())
         self.Realize()
+    def OnDetectUnit(self,event):
+        im=ImageGrab.grab()
+        xsizea,ysizea=im.size
+        lim=im.crop((0,ysizea/2,xsizea/2,ysizea)).convert("1").convert("L")
+        xsize,ysize=lim.size
+        minlen=10
+        bflag=False
+        for i in range(ysize):
+            startpos=-1
+            lastdata=-1
+            cnt=0
+            for j in range(xsize):
+                data=lim.getpixel((j,ysize-i-1))
+                if data==lastdata:
+                    cnt+=1
+                else:
+                    if lastdata==0 and startpos<100 and cnt>minlen:
+                        k=i
+                        while ysize>k and lim.getpixel((startpos,ysize-k-1))==lastdata:
+                            k+=1
+                        if abs(k-i-cnt)<max(2,minlen/10):
+                            bflag=True
+                            ret=(startpos,ysizea-i-1,min(k-i,cnt))
+                            break
+                    startpos=j
+                    lastdata=data
+                    cnt=1
+            if bflag:
+                break
+        if bflag:
+            self.parent.sketch.DrawUnitLine(*ret)
+            msgtext='Found unit line'
+        else:
+            msgtext='Cannot find unit line'
+        msg=wx.MessageDialog(self,msgtext,'Detect Result')
+        msg.ShowModal()
+        self.parent.sketch.SetFocus()
     def OnUnit(self,event):
         self.parent.SetUnitLength()
+        self.parent.sketch.SetFocus()
     def OnTransparentChanged(self,event):
         self.parent.SetTransparent(self.slider.GetValue())
+        self.parent.sketch.SetFocus()
 
 class MainFrame(wx.Frame):
     def __init__(self,parent=None,title="MainFrame"):
@@ -298,6 +354,7 @@ class MainFrame(wx.Frame):
         scr.StartDrawingOnTop()
         self.scrsize=scr.GetSizeTuple()
         scr.EndDrawingOnTop()
+        self.Maximize(True)
     def InitToolBar(self):
         self.tb=SketchToolBar(self)
         self.SetToolBar(self.tb)
