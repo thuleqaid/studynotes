@@ -1,0 +1,14 @@
+■試験：
+ファイル格式：
+#title
+xxx
+#prelude
+xxx
+xxx
+#questions
+question_index,question(,choice_index,choice)+,answer_index,explanation
+…
+※エンコード：UTF8
+※question_index:int
+※choice_index:char
+※answer_index:char
