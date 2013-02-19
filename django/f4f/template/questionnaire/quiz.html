@@ -1,0 +1,10 @@
+{% if question %}
+    <p>{{ question.question }}</p>
+    <ul>
+    {% for choice in choices %}
+        <li><a href="/qa/{{ titleid }}/">{{ choice.answer }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No questions are available.</p>
+{% endif %}
