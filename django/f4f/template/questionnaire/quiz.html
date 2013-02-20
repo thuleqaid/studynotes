@@ -1,10 +1,14 @@
 {% if question %}
-    <p>{{ question.question }}</p>
-    <ul>
-    {% for choice in choices %}
-        <li><a href="/qa/{{ titleid }}/">{{ choice.answer }}</a></li>
-    {% endfor %}
-    </ul>
+    <form method="POST" action=".">{% csrf_token %}
+        <p><label>{{ question.question }}</label></p>
+        {% for choice in choices %}
+            <p>
+            <input type="radio" name="choice" id="{{ choice.id }}" value="{{ choice.aindex }}"/>
+            <label for="{{ choice.id }}">{{ choice.answer }}</label>
+            </p>
+        {% endfor %}
+        <button type="submit">Next</button>
+    </form>
 {% else %}
-    <p>No questions are available.</p>
+    <p><label>No questions are available.</label></p>
 {% endif %}
