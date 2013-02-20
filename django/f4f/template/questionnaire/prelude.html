@@ -1,0 +1,5 @@
+<form method="POST" action="/qa/{{ title.ttype }}/{{ title.id }}/">{% csrf_token %}
+    <p><label>{{ title.title }}</label></p>
+    <p><label>{{ title.prelude }}</label></p>
+    <button type="submit">Start</button>
+</form>

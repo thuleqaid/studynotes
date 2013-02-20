@@ -50,7 +50,7 @@ def insertDB(info):
     # begin transaction
     try:
         # insert title and prelude, get title-id
-        t=Title(title=info['title'].encode('UTF8'),prelude=info['prelude'].encode('UTF8'))
+        t=Title(title=info['title'].encode('UTF8'),prelude=info['prelude'].encode('UTF8'),ttype='T1')
         t.save()
         # insert question-index and question, get question-id, generate a dict{question-index=>question-id}
         iid={}
