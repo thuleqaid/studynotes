@@ -49,7 +49,7 @@ class Result(models.Model):
 
 class Log(models.Model):
     title = models.ForeignKey(Title)
-    result = models.ForeignKey(Result)
+    result = models.CharField(max_length=16)
     pub_date = models.DateTimeField(auto_now=True,editable=False)
 
 class LogDetail(models.Model):
