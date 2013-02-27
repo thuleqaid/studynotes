@@ -21,3 +21,5 @@ question_index,question(,choice_index,choice)+,answer_index,explanation
   Attr:result type(rank/none,default:none)
 2.next question depends on choice of current question
   Attr:choices random(rand/none,default:none)
+3.question:choice=1:1
+  Attr:choices type(dmy/none,default:none)

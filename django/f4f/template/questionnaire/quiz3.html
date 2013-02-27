@@ -1,0 +1,11 @@
+{% if question %}
+    <form method="POST" action=".">{% csrf_token %}
+        <p><label>{{ question.question }}</label></p>
+        <button>Show</button>
+        <p><label>{{ choices.answer }}</label></p>
+        <button name="submit" type="submit" value="yes">Yes</button>
+        <button name="submit" type="submit" value="no">No</button>
+    </form>
+{% else %}
+    <p><label>No questions are available.</label></p>
+{% endif %}
