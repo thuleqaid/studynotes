@@ -1,0 +1,69 @@
+<html>
+<head>
+  <script>
+    function CountMemory() {
+      this.tokens=[];
+      this.history=[];
+      this.historycnt={};
+    }
+    CountMemory.prototype={
+      newGame:function newGame(prelist,postlist,count) {
+        function makequeue(prelist,postlist,count) {
+          var outlist=new Array();
+          for(var i=0;i<prelist.length;i++) {
+            for(var j=0;j<postlist.length;j++) {
+              for(var k=0;k<count;k++) {
+                outlist.push(""+prelist[i]+postlist[j]);
+              }
+            }
+          }
+          return outlist;
+        }
+        function shufflelist(list) {
+          var outlist=new Array();
+          var i=0;
+          while(list.length>0) {
+            i=Math.floor(Math.random()*list.length);
+            outlist=outlist.concat(list.splice(i,1));
+          }
+          return outlist;
+        }
+        function initHistoryCnt(prelist,postlist) {
+          var outobj={};
+          for(var i=0;i<prelist.length;i++) {
+            for(var j=0;j<postlist.length;j++) {
+              outobj[""+prelist[i]+postlist[j]]=0;
+            }
+          }
+          return outobj;
+        }
+        this.tokens=shufflelist(makequeue(prelist,postlist,count));
+        this.historycnt=initHistoryCnt(prelist,postlist);
+        this.history=[];
+      },
+      nextToken:function nextToken() {
+        if(this.tokens.length>0) {
+          var val=this.tokens.pop();
+          this.historycnt[val]+=1;
+          this.history.push(val);
+          return val;
+        }
+        return null;
+      },
+      tokenLength:function tokenLength() {
+        return this.tokens.length;
+      },
+    }
+  </script>
+</head>
+<body>
+  <div id="xxx"/>
+  <script>
+    var div=document.getElementById("xxx");
+    var m=new CountMemory();
+    m.newGame(["S","H"],[1,2,3,4],2);
+    var list=m.tokens;
+    div.innerHTML=list.join();
+  </script>
+</body>
+</html>
