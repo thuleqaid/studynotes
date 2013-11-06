@@ -22,16 +22,19 @@ class VimPanel(IMix.IProgPanel):
 		sizer2=wx.BoxSizer(wx.HORIZONTAL)
 		btn1=wx.Button(self,label='Add')
 		btn2=wx.Button(self,label='Delete')
-		self.listb=wx.ListBox(self)
+		btn3=wx.Button(self,label='Update')
+		self.listb=wx.ListBox(self,style=wx.LB_HSCROLL|wx.LB_NEEDED_SB)
 		listfont=wx.Font(11,family=wx.FONTFAMILY_MODERN,style=wx.FONTSTYLE_NORMAL,weight=wx.FONTWEIGHT_NORMAL)
 		self.listb.SetFont(listfont)
 		sizer1.Add(btn1)
 		sizer1.Add(btn2)
+		sizer1.Add(btn3)
 		sizer2.Add(self.listb,1,wx.EXPAND)
 		self._sizer.Add(sizer1)
 		self._sizer.Add(sizer2,1,wx.EXPAND)
 		self.Bind(wx.EVT_BUTTON,self.OnBtnAdd,btn1)
 		self.Bind(wx.EVT_BUTTON,self.OnBtnDel,btn2)
+		self.Bind(wx.EVT_BUTTON,self.OnBtnUpdate,btn3)
 		self.Bind(wx.EVT_LISTBOX_DCLICK,self.OnListBoxDClick,self.listb)
 		if not self.cscope:
 			btn1.Disable()
@@ -88,7 +91,11 @@ class VimPanel(IMix.IProgPanel):
 		pickle.dump(self.listdata,fd)
 		fd.close()
 	def AppendList(self,item):
-		txt="%-32s%s" % (item[0],item[1])
+		if len(item)<3:
+			langtype=self.__class__.D_LANG_LIST[0]
+		else:
+			langtype=item[2]
+		txt="%-24s%-8s%s" % (item[0],langtype,item[1])
 		self.listb.InsertItems((txt,),self.listb.GetCount())
 	def OnBtnAdd(self,event):
 		dd=SrcDirDialog(self,"Select Source Folder",self.__class__.D_LANG_LIST)
@@ -112,13 +119,14 @@ class VimPanel(IMix.IProgPanel):
 				self.taskcount=2
 			else:
 				self.taskcount=1
-			self.cscopeindex(srcpath,dd.GetListItem(),self.__class__.D_INDEX_FILE)
-			task=IMix.IWXThread((IUtils.SimpleExternalTools.Run,self.cscope,),(VimPanel.StopBusy,self,))
+			langtype=dd.GetListItem()
+			self.cscopeindex(srcpath,langtype,self.__class__.D_INDEX_FILE)
+			task=IMix.IWXThread((IUtils.SimpleExternalTools.Run,self.cscope,),(VimPanel.RemoveCscopeIndex,self,srcpath,self.__class__.D_INDEX_FILE))
 			task.start()
 			if self.vim:
 				task=IMix.IWXThread((IUtils.SimpleExternalTools.Run,self.ctags,),(VimPanel.StopBusy,self,))
 				task.start()
-			item=tuple((desc,srcpath,))
+			item=tuple((desc,srcpath,langtype))
 			self.AppendList(item)
 			self.listdata.append(item)
 			self.SaveList()
@@ -128,6 +136,27 @@ class VimPanel(IMix.IProgPanel):
 			self.listb.Delete(sels[0])
 			del self.listdata[sels[0]]
 			self.SaveList()
+	def OnBtnUpdate(self,event):
+		sels=self.listb.GetSelections()
+		if sels:
+			srcpath=self.listdata[sels[0]][1]
+			if len(self.listdata[sels[0]])>2:
+				langtype=self.listdata[sels[0]][2]
+			else:
+				langtype=self.__class__.D_LANG_LIST[0]
+			self.StartBusy()
+			self.cscope.SetWorkingDir(srcpath)
+			if self.vim:
+				self.ctags.SetWorkingDir(srcpath)
+				self.taskcount=2
+			else:
+				self.taskcount=1
+			self.cscopeindex(srcpath,langtype,self.__class__.D_INDEX_FILE)
+			task=IMix.IWXThread((IUtils.SimpleExternalTools.Run,self.cscope,),(VimPanel.RemoveCscopeIndex,self,srcpath,self.__class__.D_INDEX_FILE))
+			task.start()
+			if self.vim:
+				task=IMix.IWXThread((IUtils.SimpleExternalTools.Run,self.ctags,),(VimPanel.StopBusy,self,))
+				task.start()
 	def OnListBoxDClick(self,event):
 		if self.vim:
 			sels=self.listb.GetSelections()
@@ -142,6 +171,11 @@ class VimPanel(IMix.IProgPanel):
 			return self.listdata[sels[0]]
 		else:
 			return None
+	def RemoveCscopeIndex(self,filepath,filename):
+		fullname=os.path.join(filepath,filename)
+		if os.path.exists(fullname):
+			os.remove(fullname)
+		self.StopBusy()
 	def StartBusy(self):
 		if self.taskcount<1:
 			self.taskcount=1
