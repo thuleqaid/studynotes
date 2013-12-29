@@ -6,6 +6,10 @@ ui=uim.UiManage('QT4')
 
 class TestApp(ui.uiClass('BasicApp')):
     def build(self):
+        cls=ui.uiClass('MessageBox')
+        window=cls(text='thuesa',icon=cls.ICON_WARNING,button=cls.BUTTON_YES_NO)
+        return window
+    def build2(self):
         self.window=ui.uiClass('SimpleWindow')()
         self.window.setTitle(u'見舞い')
         self.window.setCbCloseAction((TestApp.close,self,123))

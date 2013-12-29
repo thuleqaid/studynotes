@@ -1,28 +1,9 @@
 from imp import find_module
-from threading import Lock
-from os.path import exists,isfile,split,dirname
-from logging import getLogger
-from logging.config import fileConfig
+from os.path import split,dirname
+from utils import singleton, LogUtil
 
 __PACKAGE_NAME__=split(dirname(__file__))[1]
 __PACKAGE_VERSION__='0.0.1'
-
-def singleton(cls, *args, **kw):
-    instance={}
-    inslocker=Lock()
-    def _singleton(*args, **kw):
-        if cls in instance:
-            return instance[cls]
-        inslocker.acquire()
-        try:
-            if cls in instance:
-                return instance[cls]
-            else:
-                instance[cls]=cls(*args, **kw)
-        finally:
-            inslocker.release()
-        return instance[cls]
-    return _singleton
 
 supported_ui={'QT4':('simplegui_qt','PyQt4',),
               'WX':('simplegui_wx','wx',),
@@ -43,17 +24,6 @@ def isUiValid(uiname):
     return False
 
 @singleton
-class LogUtil(object):
-    CONFFILE='logging.conf'
-    def __init__(self):
-        if exists(self.CONFFILE) and isfile(self.CONFFILE):
-            fileConfig(self.CONFFILE)
-        else:
-            pass
-    def logger(self,logname):
-        return getLogger(logname)
-
-@singleton
 class UiManage(object):
     def __new__(self,uiname=''):
         if isUiValid(uiname):
@@ -71,10 +41,9 @@ class UiManage(object):
         self._log.info('create UiManage(%s)'%(self._ui,))
         self._loadUI()
     def uiClass(self,classname):
-        return eval('gui.%s'%(classname,))
+        return eval('self._gui.%s'%(classname,))
     def _loadUI(self):
         from sys import modules
         name='%s.%s'%(__PACKAGE_NAME__,supported_ui[self._ui][0])
-        global gui
         __import__(name)
-        gui=modules[name]
+        self._gui=modules[name]

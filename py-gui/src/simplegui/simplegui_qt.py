@@ -10,6 +10,50 @@ class BasicApp(base.BaseApp):
         self.show()
         app.exec_()
 
+class InnerMessageBox(_QtGui.QMessageBox):
+    #@base.addwrapper
+    #def __new__(self): pass
+    def __init__(self,wrapper,*args,**kw):
+        super(self.__class__,self).__init__(*args,**kw)
+        self.wrapobj=wrapper
+class MessageBox(base.BaseToplevelWidget):
+    DEFAULT_INNER_CLASS=InnerMessageBox
+    ICON_NONE=_QtGui.QMessageBox.NoIcon
+    ICON_INFORMATION=_QtGui.QMessageBox.Information
+    ICON_QUESTION=_QtGui.QMessageBox.Question
+    ICON_WARNING=_QtGui.QMessageBox.Warning
+    ICON_CRITICAL=_QtGui.QMessageBox.Critical
+    BUTTON_OK=_QtGui.QMessageBox.Ok
+    BUTTON_OK_CANCEL=_QtGui.QMessageBox.Ok|_QtGui.QMessageBox.Cancel
+    BUTTON_YES_NO=_QtGui.QMessageBox.Yes|_QtGui.QMessageBox.No
+    #RET_YES=_QtGui.QMessageBox.NoIconwx.ID_YES
+    #RET_NO=_QtGui.QMessageBox.NoIconwx.ID_NO
+    #RET_OK=_QtGui.QMessageBox.NoIconwx.ID_OK
+    #RET_CANCEL=_QtGui.QMessageBox.NoIconwx.ID_CANCEL
+    def __init__(self,innercls=DEFAULT_INNER_CLASS,*args,**kw):
+        super(self.__class__,self).__init__(innercls,*args,**kw)
+    def createWidget(self,*args,**kw):
+        self._log.debug(str(kw))
+        defaultdict={'parent':None,
+                     'title':self.__class__.__name__,
+                     'text':'',
+                     'icon':self.__class__.ICON_NONE,
+                     'button':self.__class__.BUTTON_OK}
+        for k in defaultdict.keys():
+            defaultdict[k]=kw.get(k,defaultdict[k])
+        self._log.debug(str(defaultdict))
+        self._widget=self._innercls(self,
+                                    defaultdict['icon'],
+                                    defaultdict['title'],
+                                    defaultdict['text'],
+                                    buttons=defaultdict['button'],
+                                    parent=defaultdict['parent'])
+    def show(self):
+        ret=self._widget.exec_()
+        #ret=self._widget.show()
+        #self._log.debug('Ret:%d'%(ret,))
+        return ret
+
 class Widget(object):
     def __init__(self):
         self._widget=None

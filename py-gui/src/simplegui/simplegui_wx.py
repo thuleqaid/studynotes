@@ -15,6 +15,47 @@ class BasicApp(base.BaseApp):
         app=self.InnerApp(self)
         app.MainLoop()
 
+class InnerMessageBox(_wx.MessageDialog):
+    @base.addwrapper
+    def __new__(self): pass
+    def __init__(self,wrapper,*args,**kw):
+        super(self.__class__,self).__init__(*args,**kw)
+        self.wrapobj=wrapper
+class MessageBox(base.BaseToplevelWidget):
+    DEFAULT_INNER_CLASS=InnerMessageBox
+    ICON_NONE=0
+    ICON_INFORMATION=_wx.ICON_INFORMATION
+    ICON_QUESTION=_wx.ICON_QUESTION
+    ICON_WARNING=_wx.ICON_EXCLAMATION
+    ICON_CRITICAL=_wx.ICON_ERROR
+    BUTTON_OK=_wx.OK
+    BUTTON_OK_CANCEL=_wx.OK|_wx.CANCEL
+    BUTTON_YES_NO=_wx.YES_NO
+    RET_YES=_wx.ID_YES
+    RET_NO=_wx.ID_NO
+    RET_OK=_wx.ID_OK
+    RET_CANCEL=_wx.ID_CANCEL
+    def __init__(self,innercls=DEFAULT_INNER_CLASS,*args,**kw):
+        super(self.__class__,self).__init__(innercls,*args,**kw)
+    def createWidget(self,*args,**kw):
+        self._log.debug(str(kw))
+        defaultdict={'parent':None,
+                     'title':self.__class__.__name__,
+                     'text':'',
+                     'icon':self.__class__.ICON_NONE,
+                     'button':self.__class__.BUTTON_OK}
+        for k in defaultdict.keys():
+            defaultdict[k]=kw.get(k,defaultdict[k])
+        self._log.debug(str(defaultdict))
+        self._widget=self._innercls(self,parent=defaultdict['parent'],
+                                    message=defaultdict['text'],
+                                    caption=defaultdict['title'],
+                                    style=defaultdict['icon']|defaultdict['button'])
+    def show(self):
+        ret=self._widget.ShowModal()
+        self._log.debug('Ret:%d'%(ret,))
+        return ret
+
 class Widget(object):
     def __init__(self):
         self._widget=None
