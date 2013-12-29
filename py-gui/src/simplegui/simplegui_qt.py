@@ -2,16 +2,11 @@
 import PyQt4.QtGui as _QtGui
 import PyQt4.QtCore as _QtCore
 import simplegui_utils_qt as _utils
+import base
 
-class BasicApp(object):
-    def gengui(self):
-        self.window=None
-    def show(self):
-        if self.window:
-            self.window.show()
+class BasicApp(base.BaseApp):
     def run(self):
         app=_QtGui.QApplication([])
-        self.gengui()
         self.show()
         app.exec_()
 
@@ -60,7 +55,7 @@ class GridLayout(Layout):
         elif isinstance(widget,_QtGui.QLayout):
             self._layout.addLayout(widget,row,col,rowspan,colspan)
 
-class IWindow(Widget):
+class IWindow(base.BaseToplevelWidget):
     def __init__(self):
         super(IWindow,self).__init__()
         self._closeCheck=None
@@ -121,7 +116,7 @@ class Label(Widget):
         def __init__(self,outter,parent,label):
             self._outter=outter
             if isinstance(parent,IWindow):
-                super(Label.InnerLabel,self).__init__(label,parent.getWidget())
+                super(Label.InnerLabel,self).__init__(label,parent.widget)
             else:
                 super(Label.InnerLabel,self).__init__(label,parent)
     def __init__(self,parent,label=""):
@@ -137,7 +132,7 @@ class TextEntry(Widget):
         def __init__(self,outter,parent,label):
             self._outter=outter
             if isinstance(parent,IWindow):
-                super(TextEntry.InnerTextEntry,self).__init__(label,parent.getWidget())
+                super(TextEntry.InnerTextEntry,self).__init__(label,parent.widget)
             else:
                 super(TextEntry.InnerTextEntry,self).__init__(label,parent)
             self.connect(self,_QtCore.SIGNAL("textEdited(const QString&)"),self.textEdited)
@@ -179,7 +174,7 @@ class Button(Widget):
         def __init__(self,outter,parent,label):
             self._outter=outter
             if isinstance(parent,IWindow):
-                super(Button.InnerButton,self).__init__(label,parent.getWidget())
+                super(Button.InnerButton,self).__init__(label,parent.widget)
             else:
                 super(Button.InnerButton,self).__init__(label,parent)
         def mousePressEvent(self,event):

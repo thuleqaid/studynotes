@@ -1,8 +1,11 @@
 from imp import find_module
 from threading import Lock
-from os.path import exists,isfile
+from os.path import exists,isfile,split,dirname
 from logging import getLogger
 from logging.config import fileConfig
+
+__PACKAGE_NAME__=split(dirname(__file__))[1]
+__PACKAGE_VERSION__='0.0.1'
 
 def singleton(cls, *args, **kw):
     instance={}
@@ -21,16 +24,16 @@ def singleton(cls, *args, **kw):
         return instance[cls]
     return _singleton
 
-supported_ui={'QT4':('PyQt4',),
-              'WX':('wx',),
-              'GTK2':('pygtk','gtk')}
+supported_ui={'QT4':('simplegui_qt','PyQt4',),
+              'WX':('simplegui_wx','wx',),
+              'GTK2':('simplegui_gtk','pygtk','gtk')}
 
 def uiList():
     return supported_ui.keys()
 
 def isUiValid(uiname):
     if uiname in supported_ui:
-        for pkg in supported_ui[uiname]:
+        for pkg in supported_ui[uiname][1:]:
             try:
                 find_module(pkg)
             except ImportError:
@@ -66,4 +69,12 @@ class UiManage(object):
     def __init__(self,uiname=''):
         self._log=LogUtil().logger('UiManage')
         self._log.info('create UiManage(%s)'%(self._ui,))
-
+        self._loadUI()
+    def uiClass(self,classname):
+        return eval('gui.%s'%(classname,))
+    def _loadUI(self):
+        from sys import modules
+        name='%s.%s'%(__PACKAGE_NAME__,supported_ui[self._ui][0])
+        global gui
+        __import__(name)
+        gui=modules[name]

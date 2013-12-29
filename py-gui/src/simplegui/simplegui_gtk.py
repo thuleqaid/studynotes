@@ -3,15 +3,10 @@ import pygtk as _pygtk
 _pygtk.require('2.0')
 import gtk as _gtk
 import simplegui_utils_gtk as _utils
+import base
 
-class BasicApp(object):
-    def gengui(self):
-        self.window=None
-    def show(self):
-        if self.window:
-            self.window.show()
+class BasicApp(base.BaseApp):
     def run(self):
-        self.gengui()
         self.show()
         _gtk.main()
 

@@ -1,21 +1,16 @@
 # -*- coding: utf-8 -*-
 import wx as _wx
 import simplegui_utils_wx as _utils
+import base
 
-class BasicApp(object):
+class BasicApp(base.BaseApp):
     class InnerApp(_wx.App):
         def __init__(self,outter):
             self._outter=outter
             _wx.App.__init__(self)
         def OnInit(self):
-            self._outter.gengui()
             self._outter.show()
             return True
-    def gengui(self):
-        self.window=None
-    def show(self):
-        if self.window:
-            self.window.show()
     def run(self):
         app=self.InnerApp(self)
         app.MainLoop()
@@ -61,7 +56,7 @@ class GridLayout(Layout):
         else:
             self._layout.Add(widget,(row,col),(rowspan,colspan))
 
-class IWindow(Widget):
+class IWindow(base.BaseToplevelWidget):
     def __init__(self):
         super(IWindow,self).__init__()
         self._closeCheck=None
@@ -125,7 +120,7 @@ class Label(Widget):
         def __init__(self,outter,parent,label):
             self._outter=outter
             if isinstance(parent,IWindow):
-                super(Label.InnerLabel,self).__init__(parent.getWidget(),_wx.ID_ANY,label)
+                super(Label.InnerLabel,self).__init__(parent.widget,_wx.ID_ANY,label)
             else:
                 super(Label.InnerLabel,self).__init__(parent,_wx.ID_ANY,label)
     def __init__(self,parent,label=""):
@@ -141,7 +136,7 @@ class InnerTextEntry(_wx.TextCtrl):
         self._outter=outter
         style=style | _wx.TE_PROCESS_ENTER
         if isinstance(parent,IWindow):
-            super(InnerTextEntry,self).__init__(parent.getWidget(),_wx.ID_ANY,label,style=style)
+            super(InnerTextEntry,self).__init__(parent.widget,_wx.ID_ANY,label,style=style)
         else:
             super(InnerTextEntry,self).__init__(parent,_wx.ID_ANY,label,style=style)
         self.Bind(_wx.EVT_SET_FOCUS,self.focusInEvent)
@@ -187,7 +182,7 @@ class Button(Widget):
         def __init__(self,outter,parent,label):
             self._outter=outter
             if isinstance(parent,IWindow):
-                super(Button.InnerButton,self).__init__(parent.getWidget(),_wx.ID_ANY,label)
+                super(Button.InnerButton,self).__init__(parent.widget,_wx.ID_ANY,label)
             else:
                 super(Button.InnerButton,self).__init__(parent,_wx.ID_ANY,label)
             self.Bind(_wx.EVT_BUTTON,self.onClickEvent)
