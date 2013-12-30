@@ -134,6 +134,11 @@ class VimPanel(IMix.IProgPanel):
 		sels=self.listb.GetSelections()
 		if sels:
 			self.listb.Delete(sels[0])
+			srcpath=self.listdata[sels[0]][1]
+			for tags in ('tags','cscope.out','cscope.cache'):
+				tagfile=os.path.join(srcpath,tags)
+				if os.path.exists(tagfile):
+					os.remove(tagfile)
 			del self.listdata[sels[0]]
 			self.SaveList()
 	def OnBtnUpdate(self,event):
