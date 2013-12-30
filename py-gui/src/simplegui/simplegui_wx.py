@@ -16,45 +16,38 @@ class BasicApp(base.BaseApp):
         app.MainLoop()
 
 class InnerMessageBox(_wx.MessageDialog):
+    TABLE_ICON={base.MessageBox.ICON_NONE:0,
+                base.MessageBox.ICON_INFORMATION:_wx.ICON_INFORMATION,
+                base.MessageBox.ICON_QUESTION:_wx.ICON_QUESTION,
+                base.MessageBox.ICON_WARNING:_wx.ICON_EXCLAMATION,
+                base.MessageBox.ICON_CRITICAL:_wx.ICON_ERROR}
+    TABLE_BUTTON={base.MessageBox.BUTTON_OK:_wx.OK,
+                  base.MessageBox.BUTTON_OK_CANCEL:_wx.OK|_wx.CANCEL,
+                  base.MessageBox.BUTTON_YES_NO:_wx.YES_NO}
+    TABLE_RET={_wx.ID_YES:base.MessageBox.RET_YES,
+               _wx.ID_NO:base.MessageBox.RET_NO,
+               _wx.ID_OK:base.MessageBox.RET_OK,
+               _wx.ID_CANCEL:base.MessageBox.RET_CANCEL}
     @base.addwrapper
-    def __new__(self): pass
-    def __init__(self,wrapper,*args,**kw):
-        super(self.__class__,self).__init__(*args,**kw)
-        self.wrapobj=wrapper
-class MessageBox(base.BaseToplevelWidget):
-    DEFAULT_INNER_CLASS=InnerMessageBox
-    ICON_NONE=0
-    ICON_INFORMATION=_wx.ICON_INFORMATION
-    ICON_QUESTION=_wx.ICON_QUESTION
-    ICON_WARNING=_wx.ICON_EXCLAMATION
-    ICON_CRITICAL=_wx.ICON_ERROR
-    BUTTON_OK=_wx.OK
-    BUTTON_OK_CANCEL=_wx.OK|_wx.CANCEL
-    BUTTON_YES_NO=_wx.YES_NO
-    RET_YES=_wx.ID_YES
-    RET_NO=_wx.ID_NO
-    RET_OK=_wx.ID_OK
-    RET_CANCEL=_wx.ID_CANCEL
-    def __init__(self,innercls=DEFAULT_INNER_CLASS,*args,**kw):
-        super(self.__class__,self).__init__(innercls,*args,**kw)
-    def createWidget(self,*args,**kw):
-        self._log.debug(str(kw))
+    def __init__(self,kw):
         defaultdict={'parent':None,
                      'title':self.__class__.__name__,
                      'text':'',
-                     'icon':self.__class__.ICON_NONE,
-                     'button':self.__class__.BUTTON_OK}
+                     'icon':0,
+                     'button':0}
+        icon=kw.get('icon',base.MessageBox.ICON_NONE)
+        kw['icon']=self.__class__.TABLE_ICON[icon]
+        button=kw.get('button',base.MessageBox.BUTTON_OK)
+        kw['button']=self.__class__.TABLE_BUTTON[button]
         for k in defaultdict.keys():
             defaultdict[k]=kw.get(k,defaultdict[k])
-        self._log.debug(str(defaultdict))
-        self._widget=self._innercls(self,parent=defaultdict['parent'],
-                                    message=defaultdict['text'],
-                                    caption=defaultdict['title'],
-                                    style=defaultdict['icon']|defaultdict['button'])
-    def show(self):
-        ret=self._widget.ShowModal()
-        self._log.debug('Ret:%d'%(ret,))
-        return ret
+        super(self.__class__,self).__init__(parent=defaultdict['parent'],
+                                            message=defaultdict['text'],
+                                            caption=defaultdict['title'],
+                                            style=defaultdict['icon']|defaultdict['button'])
+    def wrapshow(self):
+        ret=self.ShowModal()
+        return self.__class__.TABLE_RET[ret]
 
 class Widget(object):
     def __init__(self):

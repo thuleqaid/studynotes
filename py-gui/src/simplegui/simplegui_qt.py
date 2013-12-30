@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
+import sys
 import PyQt4.QtGui as _QtGui
 import PyQt4.QtCore as _QtCore
 import simplegui_utils_qt as _utils
 import base
+from utils import LogUtil
 
 class BasicApp(base.BaseApp):
     def run(self):
@@ -11,48 +13,47 @@ class BasicApp(base.BaseApp):
         app.exec_()
 
 class InnerMessageBox(_QtGui.QMessageBox):
-    #@base.addwrapper
-    #def __new__(self): pass
-    def __init__(self,wrapper,*args,**kw):
-        super(self.__class__,self).__init__(*args,**kw)
-        self.wrapobj=wrapper
-class MessageBox(base.BaseToplevelWidget):
-    DEFAULT_INNER_CLASS=InnerMessageBox
-    ICON_NONE=_QtGui.QMessageBox.NoIcon
-    ICON_INFORMATION=_QtGui.QMessageBox.Information
-    ICON_QUESTION=_QtGui.QMessageBox.Question
-    ICON_WARNING=_QtGui.QMessageBox.Warning
-    ICON_CRITICAL=_QtGui.QMessageBox.Critical
-    BUTTON_OK=_QtGui.QMessageBox.Ok
-    BUTTON_OK_CANCEL=_QtGui.QMessageBox.Ok|_QtGui.QMessageBox.Cancel
-    BUTTON_YES_NO=_QtGui.QMessageBox.Yes|_QtGui.QMessageBox.No
-    #RET_YES=_QtGui.QMessageBox.NoIconwx.ID_YES
-    #RET_NO=_QtGui.QMessageBox.NoIconwx.ID_NO
-    #RET_OK=_QtGui.QMessageBox.NoIconwx.ID_OK
-    #RET_CANCEL=_QtGui.QMessageBox.NoIconwx.ID_CANCEL
-    def __init__(self,innercls=DEFAULT_INNER_CLASS,*args,**kw):
-        super(self.__class__,self).__init__(innercls,*args,**kw)
-    def createWidget(self,*args,**kw):
-        self._log.debug(str(kw))
+    TABLE_ICON={base.MessageBox.ICON_NONE:_QtGui.QMessageBox.NoIcon,
+                base.MessageBox.ICON_INFORMATION:_QtGui.QMessageBox.Information,
+                base.MessageBox.ICON_QUESTION:_QtGui.QMessageBox.Question,
+                base.MessageBox.ICON_WARNING:_QtGui.QMessageBox.Warning,
+                base.MessageBox.ICON_CRITICAL:_QtGui.QMessageBox.Critical}
+    TABLE_BUTTON={base.MessageBox.BUTTON_OK:_QtGui.QMessageBox.Ok,
+                  base.MessageBox.BUTTON_OK_CANCEL:_QtGui.QMessageBox.Ok|_QtGui.QMessageBox.Cancel,
+                  base.MessageBox.BUTTON_YES_NO:_QtGui.QMessageBox.Yes|_QtGui.QMessageBox.No}
+    TABLE_RET={_QtGui.QMessageBox.Yes:base.MessageBox.RET_YES,
+               _QtGui.QMessageBox.No:base.MessageBox.RET_NO,
+               _QtGui.QMessageBox.Ok:base.MessageBox.RET_OK,
+               _QtGui.QMessageBox.Cancel:base.MessageBox.RET_CANCEL}
+    @base.addwrapper
+    def __init__(self,kw):
         defaultdict={'parent':None,
                      'title':self.__class__.__name__,
                      'text':'',
-                     'icon':self.__class__.ICON_NONE,
-                     'button':self.__class__.BUTTON_OK}
+                     'icon':0,
+                     'button':0}
+        icon=kw.get('icon',base.MessageBox.ICON_NONE)
+        kw['icon']=self.__class__.TABLE_ICON[icon]
+        button=kw.get('button',base.MessageBox.BUTTON_OK)
+        kw['button']=self.__class__.TABLE_BUTTON[button]
         for k in defaultdict.keys():
             defaultdict[k]=kw.get(k,defaultdict[k])
-        self._log.debug(str(defaultdict))
-        self._widget=self._innercls(self,
-                                    defaultdict['icon'],
-                                    defaultdict['title'],
-                                    defaultdict['text'],
-                                    buttons=defaultdict['button'],
-                                    parent=defaultdict['parent'])
-    def show(self):
-        ret=self._widget.exec_()
-        #ret=self._widget.show()
-        #self._log.debug('Ret:%d'%(ret,))
-        return ret
+        if defaultdict['parent']==None:
+            self._only=True
+            self._log=LogUtil().logger('UI')
+        else:
+            self._only=False
+        super(self.__class__,self).__init__(defaultdict['icon'],
+                                            defaultdict['title'],
+                                            defaultdict['text'],
+                                            defaultdict['button'],
+                                            defaultdict['parent'])
+    def wrapshow(self):
+        ret=self.exec_()
+        if self._only:
+            self._log.debug('Ret:%d'%(self.__class__.TABLE_RET[ret],))
+            sys.exit(ret)
+        return self.__class__.TABLE_RET[ret]
 
 class Widget(object):
     def __init__(self):

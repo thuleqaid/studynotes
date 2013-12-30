@@ -10,6 +10,41 @@ class BasicApp(base.BaseApp):
         self.show()
         _gtk.main()
 
+class InnerMessageBox(_gtk.MessageDialog):
+    TABLE_ICON={base.MessageBox.ICON_NONE:_gtk.MESSAGE_INFO,
+                base.MessageBox.ICON_INFORMATION:_gtk.MESSAGE_INFO,
+                base.MessageBox.ICON_QUESTION:_gtk.MESSAGE_QUESTION,
+                base.MessageBox.ICON_WARNING:_gtk.MESSAGE_WARNING,
+                base.MessageBox.ICON_CRITICAL:_gtk.MESSAGE_ERROR}
+    TABLE_BUTTON={base.MessageBox.BUTTON_OK:_gtk.BUTTONS_OK,
+                  base.MessageBox.BUTTON_OK_CANCEL:_gtk.BUTTONS_OK_CANCEL,
+                  base.MessageBox.BUTTON_YES_NO:_gtk.BUTTONS_YES_NO}
+    #TABLE_RET={_wx.ID_YES:base.MessageBox.RET_YES,
+               #_wx.ID_NO:base.MessageBox.RET_NO,
+               #_wx.ID_OK:base.MessageBox.RET_OK,
+               #_wx.ID_CANCEL:base.MessageBox.RET_CANCEL}
+    @base.addwrapper
+    def __init__(self,kw):
+        defaultdict={'parent':None,
+                     'title':self.__class__.__name__,
+                     'text':'',
+                     'icon':0,
+                     'button':0}
+        icon=kw.get('icon',base.MessageBox.ICON_NONE)
+        kw['icon']=self.__class__.TABLE_ICON[icon]
+        button=kw.get('button',base.MessageBox.BUTTON_OK)
+        kw['button']=self.__class__.TABLE_BUTTON[button]
+        for k in defaultdict.keys():
+            defaultdict[k]=kw.get(k,defaultdict[k])
+        super(self.__class__,self).__init__(parent=defaultdict['parent'],
+                                            type=defaultdict['icon'],
+                                            buttons=defaultdict['button'],
+                                            message_format=defaultdict['text'])
+    def wrapshow(self):
+        ret=self.show()
+        #return self.__class__.TABLE_RET[ret]
+        return 0
+
 class Widget(object):
     def __init__(self):
         self._widget=None

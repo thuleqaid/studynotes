@@ -1,26 +1,19 @@
 # -*- coding: utf-8 -*-
 from utils import LogUtil
+from uimanage import UiManage
 
 def fgetwrapobj(self):
     if not hasattr(self,'_wrapobj'):
         self._wrapobj=None
     return self._wrapobj
-def fsetwrapobj(self,value):
-    if not hasattr(self,'_wrapobj'):
-        self._wrapobj=None
-    if self._wrapobj is None:
-        if isinstance(value,BaseWidget):
-            self._wrapobj=value
-def addwrapper(new):
-    if new.__name__!='__new__':
-        return new
-    def __new__(cls,*args,**kw):
-        print cls
-        print cls.__class__.__name__
-        print super(cls.__class__,cls)
-        cls.wrapobj=property(fget=fgetwrapobj,fset=fsetwrapobj)
-        return super(cls.__class__,cls).__new__(cls,*args,**kw)
-    return __new__
+def addwrapper(init):
+    if init.__name__!='__init__':
+        return init
+    def __init__(cls,wrapper,*args,**kw):
+        cls.wrapobj=property(fget=fgetwrapobj)
+        cls._wrapobj=wrapper
+        return init(cls,*args,**kw)
+    return __init__
 
 class BaseApp(object):
     def build(self):
@@ -45,6 +38,7 @@ class BaseWidget(object):
     def __init__(self,innercls=DEFAULT_INNER_CLASS,*args,**kw):
         self._log=LogUtil().logger('UI')
         self._innercls=innercls
+        self._log.debug('InnerClass:%s'%(innercls.__name__,))
         self.createWidget(*args,**kw)
     def createWidget(self,*args,**kw):
         self._widget=None
@@ -54,3 +48,43 @@ class BaseWidget(object):
 class BaseToplevelWidget(BaseWidget):
     def show(self):
         pass
+
+'''
+class InnerMessageBox(XXXUI.XXXWIDGET):
+    @addwrapper
+    def __init__(self,kw): pass
+    def wrapshow(self):
+        return MessageBox.RET_XXX
+'''
+class MessageBox(BaseToplevelWidget):
+    ICON_NONE=0
+    ICON_INFORMATION=1
+    ICON_QUESTION=2
+    ICON_WARNING=4
+    ICON_CRITICAL=8
+    BUTTON_OK=16
+    BUTTON_OK_CANCEL=32
+    BUTTON_YES_NO=64
+    RET_YES=128
+    RET_NO=256
+    RET_OK=512
+    RET_CANCEL=1024
+    def __init__(self,*args,**kw):
+        innercls=kw.pop('innercls',UiManage().uiClass('InnerMessageBox'))
+        super(self.__class__,self).__init__(innercls,*args,**kw)
+    def createWidget(self,*args,**kw):
+        self._log.debug(str(kw))
+        defaultdict={'parent':None,
+                     'title':self.__class__.__name__,
+                     'text':'',
+                     'icon':self.__class__.ICON_NONE,
+                     'button':self.__class__.BUTTON_OK}
+        for k in defaultdict.keys():
+            if k not in kw:
+                kw[k]=defaultdict[k]
+        self._log.debug(str(kw))
+        self._widget=self._innercls(self,kw)
+    def show(self):
+        ret=self._widget.wrapshow()
+        self._log.debug('Ret:%d'%(ret,))
+        return ret

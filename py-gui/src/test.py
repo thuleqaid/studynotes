@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-import simplegui as uim
-ui=uim.UiManage('QT4')
-#ui=uim.UiManage('WX')
+import simplegui.uimanage as uim
+#ui=uim.UiManage('QT4')
+ui=uim.UiManage('WX')
 #ui=uim.UiManage('GTK2')
+import simplegui.base as base
 
 class TestApp(ui.uiClass('BasicApp')):
     def build(self):
-        cls=ui.uiClass('MessageBox')
+        cls=base.MessageBox
         window=cls(text='thuesa',icon=cls.ICON_WARNING,button=cls.BUTTON_YES_NO)
         return window
     def build2(self):
