@@ -6,7 +6,7 @@ import IMix
 import FiboPanel
 import VimPanel
 import CallGraphPanel
-import ToolsPanel
+import EncodePanel
 class ToolsEnvironmentApp(wx.App):
 	def OnInit(self):
 		self.frame=ToolsEnvironmentFrame(None,title='ToolsEnvironment Application')
@@ -21,6 +21,7 @@ class ToolsEnvironmentFrame(IGui.IFrame):
 				name='ToolsEnvironmentFrame'):
 		super(ToolsEnvironmentFrame,self).__init__(parent,id,title,
 									pos,size,style,name)
+		self.SetIcon(wx.Icon('appicon.ico'))
 	def InitMainPanel(self):
 		return ToolsEnvironmentNB(self)
 	def InitTaskBarIcon(self):
@@ -47,7 +48,7 @@ class ToolsEnvironmentNB(IGui.INotebook):
 		self.AddPage(self.vimpanel,'VimPanel')
 		self.cgpanel=CallGraphPanel.CallGraphPanel(self,os.path.join(os.getcwdu(),u'Tools.ini'))
 		self.AddPage(self.cgpanel,'CallGraphPanel')
-		#self.AddPage(ToolsPanel.ToolsPanel(self),'Tools')
+		self.AddPage(EncodePanel.EncodePanel(self),'Encode')
 		pass
 	def OnPageChanged(self, event):
 		old = event.GetOldSelection()
