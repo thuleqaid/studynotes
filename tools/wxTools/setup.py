@@ -17,7 +17,7 @@ setup(
     # The first three parameters are not required, if at least a
     # 'version' is given, then a versioninfo resource is built from
     # them and added to the executables.
-    version = "1.5.0",
+    version = "1.7.0",
     description = "Vim Source Navigator",
     name = "ToolsEnvironment",
 

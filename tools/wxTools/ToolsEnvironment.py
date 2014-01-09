@@ -7,6 +7,10 @@ import FiboPanel
 import VimPanel
 import CallGraphPanel
 import EncodePanel
+import RemindSrv
+from twisted.internet import wxreactor
+wxreactor.install()
+from twisted.internet import reactor
 class ToolsEnvironmentApp(wx.App):
 	def OnInit(self):
 		self.frame=ToolsEnvironmentFrame(None,title='ToolsEnvironment Application')
@@ -49,6 +53,7 @@ class ToolsEnvironmentNB(IGui.INotebook):
 		self.cgpanel=CallGraphPanel.CallGraphPanel(self,os.path.join(os.getcwdu(),u'Tools.ini'))
 		self.AddPage(self.cgpanel,'CallGraphPanel')
 		self.AddPage(EncodePanel.EncodePanel(self),'Encode')
+		RemindSrv.startRemindSrv(reactor,os.path.join(os.getcwdu(),u'Tools.ini'))
 		pass
 	def OnPageChanged(self, event):
 		old = event.GetOldSelection()
@@ -78,5 +83,6 @@ class MyTaskBarIcon(IGui.ITaskBarIcon):
 
 if __name__=='__main__':
 	app=ToolsEnvironmentApp(False)
-	app.MainLoop()
+	reactor.registerWxApp(app)
+	reactor.run()
 
