@@ -1,0 +1,24 @@
+■関数宣言				
+int test_push_queue(int no)				
+
+■外部関数				
+■完了				
+
+■外部変数				
+型	変数名			
+■完了				
+
+■自動変数				
+型	変数名	初期化	初期化値	初期化サイズ
+S_AUTOUPDATE_UNCOMPLETE_DATA	send_data	memset		
+■完了				
+
+■入出力表				
+入力		出力		
+no	push_uncomplete_transmission(&send_data)	send_data.comm_type	push_uncomplete_transmission(&send_data)	戻り値
+5	△	AUTOUPDATE_COMM_TYPE_NA05_NOTICE_GETDATA_FINISHED	○	0
+6	△	AUTOUPDATE_COMM_TYPE_NA06_NOTICE_MAPUPDATE_COMPLETE	○	0
+7	△	AUTOUPDATE_COMM_TYPE_NA07_UPLOAD_MAPVERSION	○	0
+8	△	AUTOUPDATE_COMM_TYPE_NA08_CANCEL_REQUEST_DATA	○	0
+上記以外	△	-	×	-1
+				■完了
