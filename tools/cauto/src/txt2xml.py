@@ -62,7 +62,11 @@ class Txt2Xml(object):
         self._xmlMatrix(matrix)
 
         with open(filename,'w') as fh:
-            fh.write(etree.tostring(root,pretty_print=True,encoding='utf-8'))
+            fh.write(etree.tostring(root,
+                                    method='xml',
+                                    xml_declaration=True,
+                                    pretty_print=True,
+                                    encoding='utf-8'))
 
     def _xmlFunc(self,element,funcdata):
         for idx,data in enumerate(funcdata):
@@ -84,12 +88,12 @@ class Txt2Xml(object):
             invar=etree.SubElement(element,'in-var')
             for idx,v in enumerate(self._invars):
                 inv=etree.SubElement(invar,'var%d'%(idx,))
-                inv.set('name',v)
+                inv.set('value',v)
         if len(self._outvars)>0:
             outvar=etree.SubElement(element,'out-var')
             for idx,v in enumerate(self._outvars):
                 outv=etree.SubElement(outvar,'var%d'%(idx,))
-                outv.set('name',v)
+                outv.set('value',v)
         for i in range(len(self._incond)):
             item=etree.SubElement(element,'rule%d'%(i,))
             if len(self._incond[i])>0:
@@ -228,6 +232,9 @@ class Txt2Xml(object):
         if rret:
             ptype=rret.group('type').strip()
             pname=rret.group('name').strip()
+        else:
+            ptype=sdata.strip()
+            pname=ptype
         return tuple((ptype,pname))
 
     def parseExtVars(self):
