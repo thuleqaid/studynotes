@@ -2,6 +2,8 @@
 import base
 
 class FunctionC(base.BaseFunction):
+    def __init__(self):
+        super(FunctionC,self).__init__()
     def toString(self):
         pcnt=len(self._params)-1
         params=[]
@@ -14,14 +16,16 @@ class FunctionC(base.BaseFunction):
         return outstr
 
 class VariableC(base.BaseVariable):
-    pass
+    def __init__(self,vtype,vname,kv):
+        super(VariableC,self).__init__(vtype,vname,kv)
 
 class MatrixC(base.BaseMatrix):
-    pass
+    def __init__(self,ivars,ovars,irules,orules):
+        super(MatrixC,self).__init__(ivars,ovars,irules,orules)
 
 class ManageC(base.BaseManage):
     def __init__(self):
-        super(self.__class__,self).__init__()
+        super(ManageC,self).__init__()
         self._functions=[]
         self._exvars=[]
         self._autovars=[]
@@ -55,6 +59,12 @@ class ManageC(base.BaseManage):
             self._exvars.append(variable)
     def setMatrix(self,ivars,ovars,irules,orules):
         self._matrix=MatrixC(ivars,ovars,irules,orules)
+    def outputFile(self,filename,encode='utf-8'):
+        pass
+
+class ManageC0(ManageC):
+    def __init__(self):
+        super(ManageC0,self).__init__()
     def outputFile(self,filename,encode='utf-8'):
         with open(filename,'wb') as fh:
             data=self.outputExFunc()
@@ -227,4 +237,88 @@ class ManageC(base.BaseManage):
                     outstr+='%s%s = %s;\n'%(prefix,self._retvar,value)
                 else:
                     outstr+='%s%s = %s;\n'%(prefix,varlist[i],value)
+        return outstr
+
+class ManageC1(ManageC0):
+    def __init__(self):
+        super(ManageC1,self).__init__()
+    def _optimizeRules(self,level=0):
+        rules=self._matrix.ruleValues()
+        pairs=self._matrix.getPairs()
+        ilist=self._matrix.getIVars()
+        icnt=len(ilist)
+        iocnt=len(rules[0])
+        outlist=[]
+        for rule in rules:
+            outlist.append([])
+            iidx,oidx=0,icnt
+            for pair in pairs:
+                if rule[pair[0]]=='__NOTCARE__':
+                    for i in range(iidx,pair[0]):
+                        if rule[i]!='__NOTCARE__':
+                            outlist[-1].append(('i',i))
+                    for i in range(oidx,pair[1]+1):
+                        outlist[-1].append(('o',i))
+                    iidx=pair[0]+1
+                    oidx=pair[1]+1
+                else:
+                    for i in range(iidx,pair[0]):
+                        if rule[i]!='__NOTCARE__':
+                            outlist[-1].append(('i',i))
+                    for i in range(oidx,pair[1]):
+                        outlist[-1].append(('o',i))
+                    iidx=pair[0]
+                    oidx=pair[1]+1
+            for i in range(iidx,icnt):
+                if rule[i]!='__NOTCARE__':
+                    outlist[-1].append(('i',i))
+            for i in range(oidx,iocnt):
+                outlist[-1].append(('o',i))
+            plevel=0
+            for i in range(icnt):
+                if rule[i]!='__NOTCARE__':
+                    plevel+=1
+                    outlist[-1].append(('c',plevel))
+        for ii in range(len(outlist)-1):
+            i=len(outlist)-i-2
+            rule1=outlist[i]
+            rule2=outlist[i+1]
+            level=0
+            for j in range(min(len(rule1),len(rule2))):
+                if rule1[j]==rule2[j] and rules[i][rule1[j][1]]==rules[i+1][rule1[j][1]]:
+                    if rule1[j][0]=='i':
+                        level+=1
+                else:
+                    break
+            for k in range(j):
+                outlist[i+1].pop(0)
+            for k in range(level):
+                outlist[i].pop(-1)
+        if level>=1:
+            pass
+        if level>=2:
+            pass
+        return tuple(outlist)
+
+    def _outputMatrix(self):
+        outlist=self._optimizeRules()
+        outstr=''
+        ilist=self._matrix.getIVars()
+        olist=self._matrix.getOVars()
+        iolist=ilist+olist
+        cstep=1
+        self._flagif=True
+        for ridx,rule in enumerate(self._matrix.iterRules()):
+            self._log.debug('Rule:%s'%(repr(rule),))
+            for outformat in outlist[ridx]:
+                if outformat[0]=='i':
+                    src,conds,step=self._outputInput(iolist,rule,cstep,outformat[1],outformat[1])
+                    outstr+=src
+                    cstep+=1
+                elif outformat[0]=='o':
+                    outstr+=self._outputOutput(iolist,rule,cstep,outformat[1],outformat[1])
+                elif outformat[0]=='c':
+                    cstep-=1
+                    outstr+=self._tagtab * cstep + '}\n'
+            self._flagif=False
         return outstr

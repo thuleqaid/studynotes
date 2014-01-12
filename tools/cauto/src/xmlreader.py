@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 from lxml import etree
 from logutil import LogUtil
-from langc import ManageC
+from langc import *
 
 class XmlReader(object):
     def __init__(self):
@@ -18,17 +18,18 @@ class XmlReader(object):
             else:
                 self.endtag(':'.join(tagstack),elem)
                 tagstack.pop(-1)
-    def getInfo(self):
-        mc=ManageC()
+    def getInfo(self,infoobj):
+        if not isinstance(infoobj,ManageC):
+            return False
         for func in self._funcs:
-            mc.addFunction(func)
+            infoobj.addFunction(func)
         for var in self._vars:
-            mc.addVariable(var)
-        mc.setMatrix(self._invars,
+            infoobj.addVariable(var)
+        infoobj.setMatrix(self._invars,
                      self._outvars,
                      self._incond,
                      self._outcond)
-        return mc
+        return True
 
     def _initdata(self):
         self._funcs=[]
@@ -94,5 +95,6 @@ class XmlReader(object):
 if __name__ == '__main__':
     x=XmlReader()
     x.loadXml('../ignore/test_push_queue.xml')
-    mc=x.getInfo()
-    mc.outputFile('test.c')
+    mc=ManageC1()
+    x.getInfo(mc)
+    mc.outputFile('../ignore/test.c')

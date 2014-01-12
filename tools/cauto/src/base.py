@@ -57,6 +57,11 @@ class BaseMatrix(object):
     def iterRules(self):
         for rule in self._rules:
             yield tuple(rule)
+    def ruleValues(self):
+        outlist=[]
+        for rule in self._rules:
+            outlist.append(tuple([item['value'] for item in rule]))
+        return tuple(outlist)
     def getPairs(self):
         return tuple(self._iopairs)
     def _getVars(self,varlist):
