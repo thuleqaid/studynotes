@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>480</width>
+    <height>320</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Function Finder</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <widget class="QLabel" name="label">
+      <property name="text">
+       <string>Source Files</string>
+      </property>
+      <property name="buddy">
+       <cstring>edit_src</cstring>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="1">
+     <widget class="QLineEdit" name="edit_tok"/>
+    </item>
+    <item row="0" column="1">
+     <widget class="QLineEdit" name="edit_src"/>
+    </item>
+    <item row="1" column="2">
+     <widget class="QPushButton" name="btnTok">
+      <property name="text">
+       <string>...</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0">
+     <widget class="QLabel" name="label_2">
+      <property name="text">
+       <string>Token Files</string>
+      </property>
+      <property name="buddy">
+       <cstring>edit_tok</cstring>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="0" colspan="3">
+     <widget class="QListWidget" name="listWidget"/>
+    </item>
+    <item row="2" column="1">
+     <widget class="QLineEdit" name="edit_func"/>
+    </item>
+    <item row="0" column="2">
+     <widget class="QPushButton" name="btnSrc">
+      <property name="text">
+       <string>...</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="0">
+     <widget class="QLabel" name="label_3">
+      <property name="text">
+       <string>Target Function</string>
+      </property>
+      <property name="buddy">
+       <cstring>edit_func</cstring>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="2">
+     <widget class="QPushButton" name="btnFind">
+      <property name="text">
+       <string>Search</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="2">
+     <widget class="QPushButton" name="btnOutput">
+      <property name="text">
+       <string>Output</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>480</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionExti"/>
+   </widget>
+   <addaction name="menuFile"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionExti">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
+ </widget>
+ <tabstops>
+  <tabstop>btnSrc</tabstop>
+  <tabstop>btnTok</tabstop>
+  <tabstop>btnFind</tabstop>
+  <tabstop>btnOutput</tabstop>
+  <tabstop>edit_src</tabstop>
+  <tabstop>edit_tok</tabstop>
+  <tabstop>edit_func</tabstop>
+  <tabstop>listWidget</tabstop>
+ </tabstops>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>btnSrc</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onBtnSrc()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>427</x>
+     <y>37</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>369</x>
+     <y>22</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>btnTok</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onBtnTok()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>453</x>
+     <y>71</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>279</x>
+     <y>22</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>btnFind</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onBtnFind()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>417</x>
+     <y>99</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>182</x>
+     <y>22</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>btnOutput</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onBtnOutput()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>443</x>
+     <y>284</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>352</x>
+     <y>280</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>menubar</sender>
+   <signal>triggered(QAction*)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onMenu(QAction*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>12</x>
+     <y>11</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>23</x>
+     <y>285</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>onBtnSrc()</slot>
+  <slot>onBtnTok()</slot>
+  <slot>onBtnFind()</slot>
+  <slot>onBtnOutput()</slot>
+  <slot>onMenu(QAction*)</slot>
+ </slots>
+</ui>
