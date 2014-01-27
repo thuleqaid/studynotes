@@ -322,3 +322,30 @@ class ManageC1(ManageC0):
                     outstr+=self._tagtab * cstep + '}\n'
             self._flagif=False
         return outstr
+
+class WriteMacroC(object):
+    def __init__(self,matrix,srcfile,rstfile):
+        super(WriteMacroC,self).__init__(matrix,srcfile,rstfile)
+    def genSrcFile(self):
+        pass
+
+class LoadMacroC(object):
+    def __init__(self,rstfile):
+        super(LoadMacroC,self).__init__(rstfile)
+
+class TestC(object):
+    def __init__(self,matrix,macro,srcfile,rstfile):
+        super(TestC,self).__init__(matrix,macro,srcfile,rstfile)
+    def genSrcFile(self):
+        # ToDo:output file header
+        # ToDo:output test function's header
+        # ToDo:output test cases
+        for idxlist,comb in self.genCombination():
+            rule=self.checkRule(idxlist,comb)
+        # ToDo:output test result
+        # ToDo:output dummy function
+        pass
+    def genCriterion(self):
+        return ((0,1),(0,1),(0,1))
+    def _checkRule(self,idx,value,ruleidxlist):
+        return tuple(ruleidxlist)

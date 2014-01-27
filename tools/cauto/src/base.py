@@ -1,4 +1,5 @@
 # -*- coding:utf-8 -*-
+import itertools
 from logutil import LogUtil
 
 class BaseFunction(object):
@@ -145,17 +146,55 @@ class BaseManage(object):
     def __init__(self):
         self._log=LogUtil().logger('Data')
 
-if __name__ == '__main__':
-    ivars=({'value':'a','comment':''},
-           {'value':'b','comment':''},
-           {'value':'c','comment':''},
-          )
-    ovars=({'value':'x','comment':''},
-          )
-    rules=(({'value':'1'},{'value':'2'},{'value':'1'},{'value':'1'}),
-           ({'value':'2'},{'value':'3'},{'value':'1'},{'value':'1'}),
-           ({'value':'2'},{'value':'3'},{'value':'2'},{'value':'1'}),
-           ({'value':'__ELSE__'},{'value':'1'},{'value':'1'},{'value':'1'}),
-           ({'value':'1'},{'value':'__NOTCARE__'},{'value':'1'},{'value':'1'}),
-          )
-    m=BaseMatrix(ivars,ovars,rules)
+class BaseWriteMacro(object):
+    def __init__(self,matrix,srcfile,rstfile):
+        self._log=LogUtil().logger('Data')
+        self._matrix=matrix
+        self._file1=srcfile
+        self._file2=rstfile
+    def genSrcFile(self):
+        pass
+
+class BaseLoadMacro(object):
+    def __init__(self,rstfile):
+        self._log=LogUtil().logger('Data')
+        self._file=rstfile
+        self._info={}
+        self._loadFile()
+    def _loadFile(self):
+        with open(self._file,'rU') as fh:
+            for line in fh.readlines():
+                parts=line.split(':')
+                self._info[parts[0]]==parts[1]
+    def getInfo(self):
+        return dict(self._info)
+
+class BaseTest(object):
+    def __init__(self,matrix,macro,srcfile,rstfile):
+        self._log=LogUtil().logger('Data')
+        self._matrix=matrix
+        self._file1=srcfile
+        self._file2=rstfile
+        self._macro=macro
+    def genSrcFile(self):
+        pass
+    def genCriterion(self):
+        return ((0,1),(0,1),(0,1))
+    def genCombination(self):
+        criterion=self.genCriterion()
+        iidxlist=tuple(criterion[-1])
+        for c in itertools.product(*criterion[:-1]):
+            yield iidxlist,c
+    def checkRule(self,iidxlist,comb):
+        rule=[i for i in range(len(self._matrix.ruleValues()))]
+        for idx,iidx in enumerate(iidxlist):
+            rule=self._checkRule(iidx,comb[idx],rule)
+            if len(rule)<1:
+                break
+        if len(rule)!=1:
+            self._log.error('Rule Error:Cnt[%d] Values[%s]'%(len(rule),','.join(rule)))
+            return -1
+        else:
+            return rule[0]
+    def _checkRule(self,idx,value,ruleidxlist):
+        return tuple(ruleidxlist)
