@@ -161,7 +161,7 @@ class TokenManager(object):
             return tuple(tokens[startidx:stopidx+1])
         else:
             return ()
-    def getFunctionTokens(self,tokfile,funcname):
+    def getFunctionTokens(self,tokfile,funcname,strip=False):
         '''
         @ret:((funcdecl,functokens),...)
         '''
@@ -172,7 +172,10 @@ class TokenManager(object):
             for func in funclist:
                 parts=func.split(':')
                 if parts[5]==funcname:
-                    outlist.append((parts[6],tokens[int(parts[2]):int(parts[3])+1]))
+                    if strip:
+                        outlist.append((parts[6],self._filterTokens(tokens[int(parts[2]):int(parts[3])+1])))
+                    else:
+                        outlist.append((parts[6],tokens[int(parts[2]):int(parts[3])+1]))
             return tuple(outlist)
         else:
             return ()
@@ -194,6 +197,68 @@ class TokenManager(object):
         return self._loadTokFile(tokfile,'SrcInfo')[0]
     def genTokenFile(self,srcfile,tokfile):
         return self._restoreTokFile(srcfile,tokfile,False)
+    def _filterTokens(self,toklist):
+        pplist=[]
+        level=0
+        i=0
+        # extract #if/else/endif
+        while i<len(toklist):
+            tok=toklist[i]
+            if tok.type=='PREPROCESSOR':
+                j=i+1
+                while toklist[j].type!='PREPROCESSOREND':
+                    j+=1
+                nextvalue=toklist[i+1].value
+                if nextvalue.startswith('if'):
+                    level+=1
+                    pplist.append((i,j,level,nextvalue,toklist[i+2].value))
+                elif nextvalue.startswith('el'):
+                    pplist.append((i,j,level,nextvalue,toklist[i+2].value))
+                elif nextvalue.startswith('en'):
+                    pplist.append((i,j,level,nextvalue,toklist[i+2].value))
+                    level-=1
+                i=j
+            i+=1
+        # remove unnecessary tokens in the case #if 0/1
+        dropset=set()
+        i=0
+        while i<len(pplist):
+            pp=pplist[i]
+            if pp[3]=='if' and pp[4] in ('0','1'):
+                level=pp[2]
+                j=i+1
+                while j<len(pplist):
+                    if pplist[j][3]=='else' and pplist[j][2]==level:
+                        break
+                    j+=1
+                else:
+                    j=-1
+                k=i+1
+                while k<len(pplist):
+                    if pplist[k][3]=='endif' and pplist[k][2]==level:
+                        break
+                    k+=1
+                else:
+                    k=-1
+                if pp[4]=='0':
+                    if j<0:
+                        dropset.update(range(pplist[i][0],pplist[k][1]+1))
+                    else:
+                        dropset.update(range(pplist[i][0],pplist[j][1]+1))
+                        dropset.update(range(pplist[k][0],pplist[k][1]+1))
+                elif pp[4]=='1':
+                    if j<0:
+                        dropset.update(range(pplist[i][0],pplist[i][1]+1))
+                        dropset.update(range(pplist[k][0],pplist[k][1]+1))
+                    else:
+                        dropset.update(range(pplist[i][0],pplist[i][1]+1))
+                        dropset.update(range(pplist[j][0],pplist[k][1]+1))
+            i+=1
+        retlist=[]
+        for i,tok in enumerate(toklist):
+            if i not in dropset:
+                retlist.append(tok)
+        return tuple(retlist)
     def _restoreTokFile(self,srcfile,tokfile,regenerate):
         if os.path.exists(srcfile) and os.path.isfile(srcfile):
             if regenerate:
