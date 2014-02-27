@@ -116,6 +116,6 @@ if __name__ == '__main__':
     dp=DriverParser()
     driverfile='ignore/Driver2_mum_rpc_call.c'
     dp.parse(driverfile)
-    print dp.driver_func
-    print dp.target_func
-    print dp.dummy_func
+    print(dp.driver_func)
+    print(dp.target_func)
+    print(dp.dummy_func)

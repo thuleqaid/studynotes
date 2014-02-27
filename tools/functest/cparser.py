@@ -1,10 +1,10 @@
 import sys
 import os.path
 import re
-import codecs
+import shutil
 sys.path.append('./plugins')
 import ply.lex as lex
-from logutil import LogUtil
+from logutil import LogUtil, guessEncode
 
 class SimpleToken(object):
     def __init__(self):
@@ -32,10 +32,11 @@ class TokenManager(object):
         getTokensByIdx
     '''
     D_EXT_TOK='.tok'
+    D_VERSION='0001' # 'xxxx' for regenerate by force
     def __init__(self):
         self._log=LogUtil().logger('TokenManager')
         self._parser=CParser()
-        self._encode=['utf-8','cp932','cp936']
+        self._encode=['cp932','cp936']
     def setupEncodings(self,*encodings):
         for en in encodings:
             if en not in self._encode:
@@ -211,32 +212,38 @@ class TokenManager(object):
             return False
     def _genTokFile(self,srcfile,tokfile):
         tokens=self._parser.parse(srcfile,*self._encode)
-        srcstruct=self._parser.analyzeFile(tokens)
-        tokpath=os.path.dirname(tokfile)
-        if not os.path.exists(tokpath) or not os.path.isdir(tokpath):
-            os.makedirs(tokpath)
-        fh=open(tokfile,'w')
-        fh.write('@SrcInfo:\n%s\n'%(self._genFileChecksum(srcfile),))
-        fh.write('@Structure:\n%s\n'%('\n'.join(srcstruct),))
-        fh.write('@Token:\n')
-        for tok in tokens:
-            fh.write('%s:%d:%s\n'%(tok.type,tok.lineno,tok.value.encode('utf-8')))
-        fh.close()
+        if tokens:
+            srcstruct=self._parser.analyzeFile(tokens)
+            tokpath=os.path.dirname(tokfile)
+            if not os.path.exists(tokpath) or not os.path.isdir(tokpath):
+                os.makedirs(tokpath)
+            fh=open(tokfile,'w',encoding='utf-8')
+            fh.write('@SrcInfo:\n%s\n'%(self._genFileChecksum(srcfile),))
+            fh.write('@Structure:\n%s\n'%('\n'.join(srcstruct),))
+            fh.write('@Token:\n')
+            for tok in tokens:
+                fh.write('%s:%d:%s\n'%(tok.type,tok.lineno,tok.value))
+            fh.close()
     def _checkTokFile(self,srcfile,tokfile):
         ret=False
-        if os.path.exists(tokfile) and os.path.isfile(tokfile):
-            checksum=self._genFileChecksum(srcfile)
-            curchecksum='\n'.join(self._loadTokFile(tokfile,'SrcInfo'))
-            ret=(checksum==curchecksum)
+        if self.D_VERSION=='xxxx':
+            ret=False
+        else:
+            if os.path.exists(tokfile) and os.path.isfile(tokfile):
+                checksum=self._genFileChecksum(srcfile)
+                curchecksum='\n'.join(self._loadTokFile(tokfile,'SrcInfo'))
+                ret=(checksum==curchecksum)
         return ret
     def _genFileChecksum(self,srcfile):
         infile=os.path.abspath(srcfile)
         mtime=os.path.getmtime(infile)
-        outstr='%s\n%d'%(infile,mtime)
+        outstr='%s\nParserVersion:%s\n%d'%(infile,self.D_VERSION,mtime)
         return outstr
     def _loadTokFile(self,tokfile,partname):
         outlist=[]
-        with open(tokfile,'rU') as fh:
+        if not os.path.exists(tokfile):
+            return ()
+        with open(tokfile,'rU',encoding='utf-8') as fh:
             flag=False
             for line in fh.readlines():
                 if line.startswith('@'):
@@ -410,33 +417,14 @@ class CParser(object):
 
     def parse(self,fname,*encode):
         # load source file
-        fh=open(fname,'rU')
-        lines=fh.read()
-        fh.close()
-        for bom in (
-                    codecs.BOM_UTF32,
-                    codecs.BOM_UTF32_BE,
-                    codecs.BOM_UTF32_LE,
-                    codecs.BOM_UTF16,
-                    codecs.BOM_UTF16_BE,
-                    codecs.BOM_UTF16_LE,
-                    codecs.BOM_UTF8):
-            bomlen=len(bom)
-            if lines[:bomlen]==bom:
-                lines=lines[bomlen:]
-                break
-        for en in encode:
-            data=lines
-            try:
-                data=lines.decode(en)
-                break
-            except:
-                pass
-        else:
+        enc,bomlen=guessEncode(fname,*encode)
+        if not enc:
             self._log.critical('No Valid Encoding')
             return
-        self._log.info('parse file: filename=%s encoding=%s'%(fname,en))
-        data.encode('utf-8')
+        self._log.info('parse file: filename=%s encoding=%s'%(fname,enc))
+        fh=open(fname,'rU',encoding=enc)
+        data=fh.read()
+        fh.close()
         # parse data
         return self._parse(data)
 
@@ -729,11 +717,34 @@ class CParser(object):
                 funcs[funcname]+=1
             idx+=1
         self._log.debug('inner function(s):%s'%(str(funcs),))
+        ## split into statements
+        #idx=idxmin
+        #startidx=idx
+        #sstack=[]
+        #while idx<=idxmax:
+        #    if tokens[idx].type in ('SEMI','COLON'):
+        #        state='%d:%d:%s'%(startidx,idx,' '.join([x.value for x in tokens[startidx:idx+1]]))
+        #        startidx=idx+1
+        #        sstack.append(state)
+        #    elif tokens[idx].type == 'LBRACE':
+        #        if startidx<idx:
+        #            state='%d:%d:%s'%(startidx,idx-1,' '.join([x.value for x in tokens[startidx:idx]]))
+        #            startidx=idx
+        #            sstack.append(state)
+        #        state='%d:%d:%s'%(startidx,idx,' '.join([x.value for x in tokens[startidx:idx+1]]))
+        #        startidx=idx+1
+        #        sstack.append(state)
+        #    elif tokens[idx].type == 'RBRACE':
+        #        state='%d:%d:%s'%(startidx,idx,' '.join([x.value for x in tokens[startidx:idx+1]]))
+        #        startidx=idx+1
+        #        sstack.append(state)
+        #    idx+=1
+        #print('\n'.join(sstack))
         return funcs
 
 def getFuncInfo(srcpath,tokpath,*funclist):
     fdict=tokenmanager.findFunctionBySrc(srcpath,tokpath,*funclist)
-    for funcname in fdict.keys():
+    for funcname in list(fdict.keys()):
         for finfo in fdict[funcname]:
             fcalls=tokenmanager.getFunctionCalls(finfo['tokfile'],funcname)
             for fc in fcalls:
@@ -755,6 +766,92 @@ def getTestFuncInfo(srcpath,tokpath,funcname):
             if len(cfdict[cfuncname])>0:
                 finfo['calldecl'].extend([x['decl'] for x in cfdict[cfuncname]])
     return fdict
+
+def dummyFile(tokfile,info):
+    '''
+    @param info:{'FB':'target_func_name',
+                 'DMY':(('funcname','dmy1funcname','dmy2funcname',...),
+                        ('funcname','dmy1funcname','dmy2funcname',...),
+                       ),
+                }
+    '''
+    if not os.path.exists(tokfile):
+        return
+    log=LogUtil().logger('TokenManager')
+    fblines=[]
+    for line in tokenmanager._loadTokFile(tokfile,'Structure'):
+        parts=line.split(':')
+        if parts[4]=='FB':
+            if parts[5]==info.get('FB',''):
+                fblines.append((int(parts[0]),int(parts[1]),parts[5],int(parts[2]),int(parts[3])))
+    log.debug('fblines:%s'%(str(sorted(fblines)),))
+
+    # find dummy functions in the function body
+    dmyinfo={}
+    dmylines=set()
+    if 'DMY' in info:
+        for fb in fblines:
+            tokens=tokenmanager.getTokensByIdx(tokfile,fb[3],fb[4])
+            for tok in tokens:
+                if tok.type=='ID':
+                    for didx,dmy in enumerate(info['DMY']):
+                        if len(dmy)>1 and dmy[0]==tok.value:
+                            if dmy[0] not in dmyinfo:
+                                dmyinfo[dmy[0]]=[0,didx]
+                            dmyinfo[dmy[0]].append(tok.lineno)
+                            dmylines.add(tok.lineno)
+        log.debug('dummy function replace lines:%s'%(str(dmylines),))
+
+    srcfile=tokenmanager.getSourceFile(tokfile)
+    if not os.path.exists(srcfile):
+        return
+    enc,bomlen=guessEncode(srcfile,'cp932','cp936')
+    fh=open(srcfile,'rU',encoding=enc)
+    fidx=0
+    fflag=True # used for the case #if ABC function-body{} #else function-body{} #endif
+    outline=''
+    for idx,line in enumerate(fh.readlines()):
+        while fidx<len(fblines) and fblines[fidx][1]<idx+1:
+            fidx+=1
+            fflag=True
+        if fidx<len(fblines) and fblines[fidx][0]<=idx+1<=fblines[fidx][1]:
+            if fflag:
+                # reset dummy functions' count
+                fflag=False
+                for dk in dmyinfo.keys():
+                    dmyinfo[dk][0]=0
+            if idx+1 in dmylines:
+                # replace dummy function
+                for dk in dmyinfo.keys():
+                    repcnt=dmyinfo[dk][2:].count(idx+1)
+                    while repcnt>0:
+                        oldstr=dk
+                        if dmyinfo[dk][0]>=len(info['DMY'][dmyinfo[dk][1]])-1:
+                            newstr=info['DMY'][dmyinfo[dk][1]][-1]
+                        else:
+                            newstr=info['DMY'][dmyinfo[dk][1]][dmyinfo[dk][0]+1]
+                            dmyinfo[dk][0]+=1
+                        line=re.sub(r'\b%s\b'%(oldstr,),newstr,line,1)
+                        repcnt-=1
+        outline+=line
+    fh.close()
+    newfile=srcfile+'.org'
+    if not os.path.exists(newfile):
+        os.rename(srcfile,newfile)
+    fout=open(srcfile,'w',encoding=enc)
+    fout.write(outline)
+    fout.close()
+    return ''
+
+def unDummyFolder(srcpath):
+    for root,dirs,files in os.walk(srcpath):
+        for fname in files:
+            if fname.upper().endswith('.ORG'):
+                orgname=os.path.splitext(fname)[0]
+                orgfullname=os.path.join(root,orgname)
+                if os.path.exists(orgfullname) and os.path.isfile(orgfullname):
+                    os.remove(orgfullname)
+                os.rename(os.path.join(root,fname),orgfullname)
 
 def copyFile(tokfile,info):
     '''
@@ -779,10 +876,10 @@ def copyFile(tokfile,info):
                 if 'if' in parts[5] or 'el' in parts[5] or 'end' in parts[5]:
                     pplines.append((int(parts[0]),int(parts[1]),parts[5]))
                 else:
-                    map(lines.add,range(int(parts[0]),int(parts[1])+1))
+                    lines.update(list(range(int(parts[0]),int(parts[1])+1)))
         else:
             if parts[5] in info.get(parts[4],()):
-                map(lines.add,range(int(parts[0]),int(parts[1])+1))
+                lines.update(list(range(int(parts[0]),int(parts[1])+1)))
                 if parts[4]=='FB':
                     fblines.append((int(parts[0]),int(parts[1]),parts[5],int(parts[2]),int(parts[3])))
     lines=list(lines)
@@ -829,7 +926,8 @@ def copyFile(tokfile,info):
         log.debug('dummy function replace lines:%s'%(str(dmylines),))
 
     srcfile=tokenmanager.getSourceFile(tokfile)
-    fh=open(srcfile,'rU')
+    enc,bomlen=guessEncode(srcfile,'cp932','cp936')
+    fh=open(srcfile,'rU',encoding=enc)
     pidx=0
     fidx=0
     fflag=True # used for the case #if ABC function-body{} #else function-body{} #endif
@@ -867,13 +965,12 @@ def copyFile(tokfile,info):
     fh.close()
     outfile=info.get('OF','')
     if outfile:
-        fout=open(outfile,'w')
+        fout=open(outfile,'w',encoding=enc)
         fout.write(outline)
         fout.close()
         return ''
     else:
         return tuple(outline)
-
 tokenmanager=TokenManager()
 
 if __name__ == '__main__':
@@ -881,4 +978,4 @@ if __name__ == '__main__':
     #srcpath='D:\\V23A0280\\module\\navi\\func_core\\mu\\modules'
     srcpath='ignore'
     tokpath='ignore/tokens'
-    print getTestFuncInfo(srcpath,tokpath,'mum_prgUpdCallback')
+    print(getTestFuncInfo(srcpath,tokpath,'mum_prgUpdCallback'))
