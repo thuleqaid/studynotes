@@ -161,7 +161,7 @@ class TokenManager(object):
             return tuple(tokens[startidx:stopidx+1])
         else:
             return ()
-    def getFunctionTokens(self,tokfile,funcname,strip=False):
+    def getFunctionTokens(self,tokfile,funcname,rmcmt=False,rmif0=False):
         '''
         @ret:((funcdecl,functokens),...)
         '''
@@ -172,10 +172,7 @@ class TokenManager(object):
             for func in funclist:
                 parts=func.split(':')
                 if parts[5]==funcname:
-                    if strip:
-                        outlist.append((parts[6],self._filterTokens(tokens[int(parts[2]):int(parts[3])+1])))
-                    else:
-                        outlist.append((parts[6],tokens[int(parts[2]):int(parts[3])+1]))
+                    outlist.append((parts[6],self._filterTokens(tokens[int(parts[2]):int(parts[3])+1],rmcmt,rmif0)))
             return tuple(outlist)
         else:
             return ()
@@ -183,7 +180,7 @@ class TokenManager(object):
         '''
         @ret:([funcdecl,inner-func1:call-count1,...],...)
         '''
-        functokens=self.getFunctionTokens(tokfile,funcname)
+        functokens=self.getFunctionTokens(tokfile,funcname,True,True)
         if len(functokens)>0:
             outlist=[]
             for func in functokens:
@@ -197,67 +194,76 @@ class TokenManager(object):
         return self._loadTokFile(tokfile,'SrcInfo')[0]
     def genTokenFile(self,srcfile,tokfile):
         return self._restoreTokFile(srcfile,tokfile,False)
-    def _filterTokens(self,toklist):
-        pplist=[]
-        level=0
-        i=0
-        # extract #if/else/endif
-        while i<len(toklist):
-            tok=toklist[i]
-            if tok.type=='PREPROCESSOR':
-                j=i+1
-                while toklist[j].type!='PREPROCESSOREND':
-                    j+=1
-                nextvalue=toklist[i+1].value
-                if nextvalue.startswith('if'):
-                    level+=1
-                    pplist.append((i,j,level,nextvalue,toklist[i+2].value))
-                elif nextvalue.startswith('el'):
-                    pplist.append((i,j,level,nextvalue,toklist[i+2].value))
-                elif nextvalue.startswith('en'):
-                    pplist.append((i,j,level,nextvalue,toklist[i+2].value))
-                    level-=1
-                i=j
-            i+=1
-        # remove unnecessary tokens in the case #if 0/1
+    def _filterTokens(self,toklist,flag_rmcmt,flag_rmif0):
+        if not flag_rmcmt and not flag_rmif0:
+            return tuple(toklist)
         dropset=set()
-        i=0
-        while i<len(pplist):
-            pp=pplist[i]
-            if pp[3]=='if' and pp[4] in ('0','1'):
-                level=pp[2]
-                j=i+1
-                while j<len(pplist):
-                    if pplist[j][3]=='else' and pplist[j][2]==level:
-                        break
-                    j+=1
-                else:
-                    j=-1
-                k=i+1
-                while k<len(pplist):
-                    if pplist[k][3]=='endif' and pplist[k][2]==level:
-                        break
-                    k+=1
-                else:
-                    k=-1
-                if pp[4]=='0':
-                    if j<0:
-                        dropset.update(range(pplist[i][0],pplist[k][1]+1))
+        if flag_rmif0:
+            pplist=[]
+            level=0
+            i=0
+            # extract #if/else/endif
+            while i<len(toklist):
+                tok=toklist[i]
+                if tok.type=='PREPROCESSOR':
+                    j=i+1
+                    while toklist[j].type!='PREPROCESSOREND':
+                        j+=1
+                    nextvalue=toklist[i+1].value
+                    if nextvalue.startswith('if'):
+                        level+=1
+                        pplist.append((i,j,level,nextvalue,toklist[i+2].value))
+                    elif nextvalue.startswith('el'):
+                        pplist.append((i,j,level,nextvalue,toklist[i+2].value))
+                    elif nextvalue.startswith('en'):
+                        pplist.append((i,j,level,nextvalue,toklist[i+2].value))
+                        level-=1
+                    i=j
+                i+=1
+            # remove unnecessary tokens in the case #if 0/1
+            i=0
+            while i<len(pplist):
+                pp=pplist[i]
+                if pp[3]=='if' and pp[4] in ('0','1'):
+                    level=pp[2]
+                    j=i+1
+                    while j<len(pplist):
+                        if pplist[j][3]=='else' and pplist[j][2]==level:
+                            break
+                        j+=1
                     else:
-                        dropset.update(range(pplist[i][0],pplist[j][1]+1))
-                        dropset.update(range(pplist[k][0],pplist[k][1]+1))
-                elif pp[4]=='1':
-                    if j<0:
-                        dropset.update(range(pplist[i][0],pplist[i][1]+1))
-                        dropset.update(range(pplist[k][0],pplist[k][1]+1))
+                        j=-1
+                    k=i+1
+                    while k<len(pplist):
+                        if pplist[k][3]=='endif' and pplist[k][2]==level:
+                            break
+                        k+=1
                     else:
-                        dropset.update(range(pplist[i][0],pplist[i][1]+1))
-                        dropset.update(range(pplist[j][0],pplist[k][1]+1))
-            i+=1
+                        k=-1
+                    if pp[4]=='0':
+                        if j<0:
+                            dropset.update(range(pplist[i][0],pplist[k][1]+1))
+                        else:
+                            dropset.update(range(pplist[i][0],pplist[j][1]+1))
+                            dropset.update(range(pplist[k][0],pplist[k][1]+1))
+                    elif pp[4]=='1':
+                        if j<0:
+                            dropset.update(range(pplist[i][0],pplist[i][1]+1))
+                            dropset.update(range(pplist[k][0],pplist[k][1]+1))
+                        else:
+                            dropset.update(range(pplist[i][0],pplist[i][1]+1))
+                            dropset.update(range(pplist[j][0],pplist[k][1]+1))
+                i+=1
         retlist=[]
         for i,tok in enumerate(toklist):
             if i not in dropset:
-                retlist.append(tok)
+                if flag_rmif0:
+                    if tok.type=='COMMENT':
+                        pass
+                    else:
+                        retlist.append(tok)
+                else:
+                    retlist.append(tok)
         return tuple(retlist)
     def _restoreTokFile(self,srcfile,tokfile,regenerate):
         if os.path.exists(srcfile) and os.path.isfile(srcfile):
@@ -361,6 +367,7 @@ class CParser(object):
         'ELLIPSIS',
         # Preprocessor
         'PREPROCESSOR','PREPROCESSOREND','MULTILINE',
+        'COMMENT',
         )
 
     # Completely ignored characters
@@ -457,9 +464,13 @@ class CParser(object):
     t_CCONST = r'(L)?\'([^\\\n]|(\\.))*?\''
 
     # Comments
-    def t_comment(self,t):
+    def t_COMMENT(self,t):
         r'(/\*(.|\n)*?\*/|//.*)'
-        t.lexer.lineno += t.value.count('\n')
+        lncnt = t.value.count('\n')
+        t.lexer.lineno += lncnt
+        if lncnt>0:
+            t.value=t.value.replace('\n','\\n\\')
+        return t
 
     def t_PREPROCESSOR(self,t):
         r'\#'
@@ -514,11 +525,21 @@ class CParser(object):
     def _outputsrc(self,data):
         #print data
         pass
+    def _nextTokenIdx(self,tokens,curidx):
+        nextidx=curidx+1
+        while nextidx<len(tokens):
+            if tokens[nextidx].type!='COMMENT':
+                break
+            nextidx+=1
+        return nextidx
     def analyzeFile(self,tokens):
         toklen=len(tokens)
         ifdef=[] # lineno:tokenno:#xxx:value / lineno:tokenno:sts:#level:{level:[level:(level
         idx=0
         headidx=0
+        if tokens[headidx].type=='COMMENT':
+            headidx=self._nextTokenIdx(tokens,headidx)
+        self._log.debug('->head_token:%d'%(headidx,))
         sts_str=('Normal','VariableInitial','FunctionBody')
         sts,stslevel1=0,0 # sts:0-Normal,1-GlobalVarInit,2-FunctionBody
         level0,level1,level2,level3=0,0,0,0
@@ -535,19 +556,19 @@ class CParser(object):
                     flag_instatement=True
                 else:
                     flag_instatement=False
-                idx2=idx+1
+                idx2=self._nextTokenIdx(tokens,idx)
                 while tokens[idx2].type!='PREPROCESSOREND':
-                    idx2+=1
+                    idx2=self._nextTokenIdx(tokens,idx2)
                 outlist.append('%d:%d:%d:%d:PP:%s'%(tokens[idx].lineno,tokens[idx2].lineno,idx,idx2,tokens[idx+1].value))
                 self._log.debug('Token[%d-%d/%d]: lineno=%d-%d PP-type=%s InStatement=%s'%(idx,idx2,toklen,tokens[idx].lineno,tokens[idx2].lineno,tokens[idx+1].value,str(flag_instatement)))
-                if tokens[idx+1].value.startswith('if'):
+                if tokens[self._nextTokenIdx(tokens,idx)].value.startswith('if'):
                     level0+=1
-                    ifdef.append('%d:%d:#%s'%(tokens[idx].lineno,idx,':'.join([t.value for t in tokens[idx+1:idx2]])))
+                    ifdef.append('%d:%d:#%s'%(tokens[idx].lineno,idx,':'.join([t.value for t in tokens[idx+1:idx2] if t.type!='COMMENT'])))
                     idx=idx2
                     ifdef.append('%d:%d:%d:%d:%d:%d:%d'%(tokens[idx].lineno,idx,sts,level0,level1,level2,level3))
                     self._log.debug('->#:%d {}:%d []:%d ():%d'%(level0,level1,level2,level3))
-                elif tokens[idx+1].value.startswith('el'):
-                    ifdef.append('%d:%d:#%s'%(tokens[idx].lineno,idx,':'.join([t.value for t in tokens[idx+1:idx2]])))
+                elif tokens[self._nextTokenIdx(tokens,idx)].value.startswith('el'):
+                    ifdef.append('%d:%d:#%s'%(tokens[idx].lineno,idx,':'.join([t.value for t in tokens[idx+1:idx2] if t.type!='COMMENT'])))
                     idx=idx2
                     idx2=len(ifdef)-2
                     cnt=1
@@ -566,9 +587,9 @@ class CParser(object):
                         idx2-=1
                     ifdef.append('%d:%d:%d:%d:%d:%d:%d'%(tokens[idx].lineno,idx,sts,level0,level1,level2,level3))
                     self._log.debug('->#:%d {}:%d []:%d ():%d'%(level0,level1,level2,level3))
-                elif tokens[idx+1].value.startswith('end'):
+                elif tokens[self._nextTokenIdx(tokens,idx)].value.startswith('end'):
                     level0-=1
-                    ifdef.append('%d:%d:#%s'%(tokens[idx].lineno,idx,':'.join([t.value for t in tokens[idx+1:idx2]])))
+                    ifdef.append('%d:%d:#%s'%(tokens[idx].lineno,idx,':'.join([t.value for t in tokens[idx+1:idx2] if t.type!='COMMENT'])))
                     idx=idx2
                     ifdef.append('%d:%d:%d:%d:%d:%d:%d'%(tokens[idx].lineno,idx,sts,level0,level1,level2,level3))
                     self._log.debug('->#:%d {}:%d []:%d ():%d'%(level0,level1,level2,level3))
@@ -577,7 +598,7 @@ class CParser(object):
                 if not flag_instatement:
                     # #xxx
                     self._outputsrc('%s%s'%(tokens[headidx].value,' '.join([t.value for t in tokens[headidx+1:idx]])))
-                    headidx=idx+1
+                    headidx=self._nextTokenIdx(tokens,idx)
                     self._log.debug('->head_token:%d'%(headidx,))
             else:
                 self._log.debug('Token[%d/%d]: type=%s lineno=%d value=%s status=%s'%(idx,toklen,tokens[idx].type,tokens[idx].lineno,tokens[idx].value,sts_str[sts]))
@@ -592,7 +613,7 @@ class CParser(object):
                                 if tokens[idx2].type=='LPAREN':
                                     # function declare
                                     self._log.debug('->function declare')
-                                    funcdecl=' '.join([x.value for x in tokens[headidx:idx]])
+                                    funcdecl=' '.join([x.value for x in tokens[headidx:idx] if x.type!='COMMENT'])
                                     while idx2>headidx:
                                         if tokens[idx2].type=='ID':
                                             outlist.append('%d:%d:%d:%d:FD:%s:%s'%(tokens[headidx].lineno,tokens[idx].lineno,headidx,idx,tokens[idx2].value,funcdecl))
@@ -620,12 +641,12 @@ class CParser(object):
                             outlist.append('%d:%d:%d:%d:VI:%s'%(tokens[varline].lineno,tokens[idx].lineno,varline,idx,varname))
                         # statement ends
                         self._outputsrc(' '.join([t.value for t in tokens[headidx:idx+1]]))
-                        headidx=idx+1
+                        headidx=self._nextTokenIdx(tokens,idx)
                         self._log.debug('->head_token:%d'%(headidx,))
                 elif tokens[idx].type=='COLON':
                     # label: / case xxx:
                     self._outputsrc(' '.join([t.value for t in tokens[headidx:idx+1]]))
-                    headidx=idx+1
+                    headidx=self._nextTokenIdx(tokens,idx)
                     self._log.debug('->head_token:%d'%(headidx,))
                 elif tokens[idx].type=='LBRACE':
                     if sts==0:
@@ -633,8 +654,8 @@ class CParser(object):
                         self._outputsrc(' '.join([t.value for t in tokens[headidx:idx]]))
                         self._outputsrc(tokens[idx].value)
                         oldheadidx=headidx
-                        funcdecl=' '.join([x.value for x in tokens[oldheadidx:idx]])
-                        headidx=idx+1
+                        funcdecl=' '.join([x.value for x in tokens[oldheadidx:idx] if x.type!='COMMENT'])
+                        headidx=self._nextTokenIdx(tokens,idx)
                         self._log.debug('->head_token:%d'%(headidx,))
                         sts=2
                         stslevel1=level1
@@ -665,7 +686,7 @@ class CParser(object):
                         self._outputsrc(' '.join([t.value for t in tokens[headidx:idx]]))
                         self._outputsrc(tokens[idx].value)
                         oldheadidx=headidx
-                        headidx=idx+1
+                        headidx=self._nextTokenIdx(tokens,idx)
                         self._log.debug('->head_token:%d'%(headidx,))
                     level1+=1
                     ifdef.append('%d:%d:%d:%d:%d:%d:%d'%(tokens[idx].lineno,idx,sts,level0,level1,level2,level3))
@@ -680,7 +701,7 @@ class CParser(object):
                         # right brace
                         self._outputsrc(' '.join([t.value for t in tokens[headidx:idx]]))
                         self._outputsrc(tokens[idx].value)
-                        headidx=idx+1
+                        headidx=self._nextTokenIdx(tokens,idx)
                         self._log.debug('->head_token:%d'%(headidx,))
                         if level1-1==stslevel1:
                             sts=0
@@ -722,7 +743,7 @@ class CParser(object):
                                     varname=tokens[idx2].value
                                     break
                                 idx2-=1
-            idx+=1
+            idx=self._nextTokenIdx(tokens,idx)
         return tuple(outlist)
     def analyzeFunction(self,tokens):
         toklen=len(tokens)
@@ -740,12 +761,12 @@ class CParser(object):
                 idxp2=idx
             if tokens[idx].type=='LBRACE':
                 break
-            idx+=1
+            idx=self._nextTokenIdx(tokens,idx)
         else:
             self._log.warning('function tokens error')
         if idxp1>=idxp2:
             self._log.warning('function tokens error')
-        idxmin=idx+1
+        idxmin=self._nextTokenIdx(tokens,idx)
         idxmax=toklen-2
         autovars=[]
         funcs={}
@@ -780,7 +801,7 @@ class CParser(object):
                 if funcname not in funcs:
                     funcs[funcname]=0
                 funcs[funcname]+=1
-            idx+=1
+            idx=self._nextTokenIdx(tokens,idx)
         self._log.debug('inner function(s):%s'%(str(funcs),))
         ## split into statements
         #idx=idxmin
