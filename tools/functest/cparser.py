@@ -746,87 +746,211 @@ class CParser(object):
             idx=self._nextTokenIdx(tokens,idx)
         return tuple(outlist)
     def analyzeFunction(self,tokens):
-        toklen=len(tokens)
-        if toklen<6:
-            # at least 6 tokens: void funcname ( ) { }
-            self._log.warning('function tokens error')
-        if tokens[-1].type!='RBRACE':
-            self._log.warning('function tokens error')
-        idx=0
-        idxp1,idxp2=toklen,0
-        while idx<toklen:
-            if tokens[idx].type=='LPAREN':
-                idxp1=min(idxp1,idx)
-            elif tokens[idx].type=='RPAREN':
-                idxp2=idx
-            if tokens[idx].type=='LBRACE':
-                break
-            idx=self._nextTokenIdx(tokens,idx)
-        else:
-            self._log.warning('function tokens error')
-        if idxp1>=idxp2:
-            self._log.warning('function tokens error')
-        idxmin=self._nextTokenIdx(tokens,idx)
-        idxmax=toklen-2
-        autovars=[]
+        statements=self.splitFunction(0,tokens,0,len(tokens))
         funcs={}
-        # analyze function's parameter list
-        if idxp2-idxp1<=2:
-            # no parameter / void
-            self._log.debug('no parameter')
-            pass
-        else:
-            idx=idxp2-1
-            cnt=0
-            flag=True
-            while idx>idxp1:
-                if tokens[idx].type in ('LPAREN','LBRACKET'):
-                    cnt-=1
-                elif tokens[idx].type in ('RPAREN','RBRACKET'):
-                    cnt+=1
-                elif tokens[idx].type=='COMMA':
-                    flag=True
-                elif tokens[idx].type=='ID':
-                    if flag and cnt==0:
-                        flag=False
-                        autovars.insert(0,tokens[idx].value)
-                idx-=1
-            self._log.debug('parameter(s):%s'%(','.join(autovars),))
-        # analyze function's body
         # analyze functions called by current function
-        idx=idxmin
-        while idx<=idxmax:
-            if tokens[idx].type=='LPAREN' and tokens[idx-1].type=='ID':
-                funcname=tokens[idx-1].value
-                if funcname not in funcs:
-                    funcs[funcname]=0
-                funcs[funcname]+=1
-            idx=self._nextTokenIdx(tokens,idx)
+        for x in statements:
+            if x[0]>0:
+                for yi in range(len(x[1])-1):
+                    if x[1][yi].type=='ID' and x[1][yi+1].type=='LPAREN':
+                        funcname=x[1][yi].value
+                        if funcname not in funcs:
+                            funcs[funcname]=0
+                        funcs[funcname]+=1
         self._log.debug('inner function(s):%s'%(str(funcs),))
-        ## split into statements
-        #idx=idxmin
-        #startidx=idx
-        #sstack=[]
-        #while idx<=idxmax:
-        #    if tokens[idx].type in ('SEMI','COLON'):
-        #        state='%d:%d:%s'%(startidx,idx,' '.join([x.value for x in tokens[startidx:idx+1]]))
-        #        startidx=idx+1
-        #        sstack.append(state)
-        #    elif tokens[idx].type == 'LBRACE':
-        #        if startidx<idx:
-        #            state='%d:%d:%s'%(startidx,idx-1,' '.join([x.value for x in tokens[startidx:idx]]))
-        #            startidx=idx
-        #            sstack.append(state)
-        #        state='%d:%d:%s'%(startidx,idx,' '.join([x.value for x in tokens[startidx:idx+1]]))
-        #        startidx=idx+1
-        #        sstack.append(state)
-        #    elif tokens[idx].type == 'RBRACE':
-        #        state='%d:%d:%s'%(startidx,idx,' '.join([x.value for x in tokens[startidx:idx+1]]))
-        #        startidx=idx+1
-        #        sstack.append(state)
-        #    idx+=1
-        #print('\n'.join(sstack))
         return funcs
+    def analyzeFunction2(self,tokens):
+        # ToDo
+        statements=self.splitFunction(0,tokens,0,len(tokens))
+        funcs={}
+        for statement in statements:
+            # analyze functions called by current function
+            if statement[0]>0:
+                for yi in range(len(statement[1])-1):
+                    if statement[1][yi].type=='ID' and statement[1][yi+1].type=='LPAREN':
+                        funcname=statement[1][yi].value
+                        if funcname not in funcs:
+                            funcs[funcname]=0
+                        funcs[funcname]+=1
+            # analyze variables
+            if statement[0]<1:
+                # function declaration
+                pass
+            else:
+                # function body
+                typelist=( 'AUTO', 'CHAR', 'CONST', 'DOUBLE',
+                           'ENUM', 'EXTERN', 'FLOAT', 'INT', 'LONG', 'REGISTER',
+                           'SHORT', 'SIGNED', 'STATIC', 'STRUCT',
+                           'UNION', 'UNSIGNED', 'VOID', 'VOLATILE',
+                           'ID')
+                if len(statement[1])>1:
+                    if statement[1][0] in typelist and statement[1][1] in typelist:
+                        statetype=1 # variable definition
+                    else:
+                        statetype=2 # statement
+                else:
+                    statetype=2
+                idlen=0
+                for yi,y in enumerate(statement[1]):
+                    if y.type=='ID':
+                        if idlen%2==0:
+                            idlen+=1
+                        else:
+                            idlen=1
+                    elif y.type in ('ARROW','PERIOD'):
+                        if idlen%2==1:
+                            idlen+=1
+                    else:
+                        if idlen>0:
+                            print('\t'+' '.join([t.value for t in statement[1][yi-idlen:yi]]))
+                        idlen=0
+                if idlen>0:
+                    print('\t'+' '.join([t.value for t in statement[1][yi-idlen:yi]]))
+        return funcs
+    def splitFunction(self,level,toklist,startidx,count):
+        if count<=0:
+            return (level,())
+        idx=startidx
+        maxidx=startidx+count
+        outlist=[]
+        if level==0:
+            # out of function
+            level1,level2,level3=0,0,0
+            idx21=-1
+            while idx<maxidx:
+                if toklist[idx].type=='LBRACE':
+                    level1+=1
+                    if idx21<0 and level1==1 and level2==0 and level3==0:
+                        outlist.append((level,[t for t in toklist[startidx:idx] if t.type!='COMMENT']))
+                        idx21=idx+1
+                        while idx21<maxidx and toklist[idx21].type=='COMMENT':
+                            idx21+=1
+                elif toklist[idx].type=='RBRACE':
+                    level1-=1
+                    if level1==0 and level2==0 and level3==0 and idx21>0:
+                        idx22=idx-1
+                        while idx22>=startidx and toklist[idx22].type=='COMMENT':
+                            idx22-=1
+                        outlist.extend(self.splitFunction(level+1,toklist,idx21,idx22-idx21+1))
+                        break
+                elif toklist[idx].type=='LBRACKET':
+                    level2+=1
+                elif toklist[idx].type=='RBRACKET':
+                    level2-=1
+                elif toklist[idx].type=='LPAREN':
+                    level3+=1
+                elif toklist[idx].type=='RPAREN':
+                    level3-=1
+                idx+=1
+        else:
+            # in function
+            while idx<maxidx:
+                headidx=idx
+                level1,level2,level3=0,0,0
+                idx2=idx+1
+                while idx2<maxidx and toklist[idx2].type=='COMMENT':
+                    idx2+=1
+                if toklist[idx].type=='PREPROCESSOR':
+                    while idx<maxidx and toklist[idx].type!='PREPROCESSOREND':
+                        idx+=1
+                    outlist.append((level,[t for t in toklist[headidx:idx+1] if t.type!='COMMENT']))
+                    pass
+                elif toklist[idx].type in ('IF','FOR','WHILE','SWITCH','ELSE'):
+                    # move idx after (condition)
+                    if toklist[idx].type=='ELSE' and toklist[idx2].type!='IF':
+                        # no need to move idx
+                        pass
+                    else:
+                        while idx<maxidx:
+                            if toklist[idx].type=='LBRACE':
+                                level1+=1
+                            elif toklist[idx].type=='RBRACE':
+                                level1-=1
+                            elif toklist[idx].type=='LBRACKET':
+                                level2+=1
+                            elif toklist[idx].type=='RBRACKET':
+                                level2-=1
+                            elif toklist[idx].type=='LPAREN':
+                                level3+=1
+                            elif toklist[idx].type=='RPAREN':
+                                level3-=1
+                                if level1==0 and level2==0 and level3==0:
+                                    break
+                            idx+=1
+                    outlist.append((level,[t for t in toklist[headidx:idx+1] if t.type!='COMMENT']))
+
+                    idx2=idx+1
+                    while idx2<maxidx and toklist[idx2].type=='COMMENT':
+                        idx2+=1
+                    if toklist[idx2].type=='LBRACE':
+                        # statements block
+                        idx21=idx2+1
+                        while idx21<maxidx and toklist[idx21].type=='COMMENT':
+                            idx21+=1
+                        while idx2<maxidx:
+                            if toklist[idx2].type=='LBRACE':
+                                level1+=1
+                            elif toklist[idx2].type=='RBRACE':
+                                level1-=1
+                                if level1==0 and level2==0 and level3==0:
+                                    idx=idx2
+                                    idx22=idx2-1
+                                    while idx22>=0 and toklist[idx22].type=='COMMENT':
+                                        idx22-=1
+                                    break
+                            elif toklist[idx2].type=='LBRACKET':
+                                level2+=1
+                            elif toklist[idx2].type=='RBRACKET':
+                                level2-=1
+                            elif toklist[idx2].type=='LPAREN':
+                                level3+=1
+                            elif toklist[idx2].type=='RPAREN':
+                                level3-=1
+                            idx2+=1
+                    else:
+                        # one statement line
+                        idx21=idx2
+                        while idx2<maxidx:
+                            if toklist[idx2].type=='LBRACE':
+                                level1+=1
+                            elif toklist[idx2].type=='RBRACE':
+                                level1-=1
+                            elif toklist[idx2].type=='LBRACKET':
+                                level2+=1
+                            elif toklist[idx2].type=='RBRACKET':
+                                level2-=1
+                            elif toklist[idx2].type=='LPAREN':
+                                level3+=1
+                            elif toklist[idx2].type=='RPAREN':
+                                level3-=1
+                            elif toklist[idx2].type=='SEMI':
+                                if level1==0 and level2==0 and level3==0:
+                                    idx=idx2
+                                    idx22=idx2
+                                    break
+                            idx2+=1
+                    outlist.extend(self.splitFunction(level+1,toklist,idx21,idx22-idx21+1))
+                else:
+                    while idx<maxidx:
+                        if toklist[idx].type=='LBRACE':
+                            level1+=1
+                        elif toklist[idx].type=='RBRACE':
+                            level1-=1
+                        elif toklist[idx].type=='LBRACKET':
+                            level2+=1
+                        elif toklist[idx].type=='RBRACKET':
+                            level2-=1
+                        elif toklist[idx].type=='LPAREN':
+                            level3+=1
+                        elif toklist[idx].type=='RPAREN':
+                            level3-=1
+                        elif toklist[idx].type=='SEMI':
+                            if level1==0 and level2==0 and level3==0:
+                                outlist.append((level,[t for t in toklist[headidx:idx+1] if t.type!='COMMENT']))
+                                break
+                        idx+=1
+                idx+=1
+        return tuple(outlist)
 
 def getFuncInfo(srcpath,tokpath,*funclist):
     fdict=tokenmanager.findFunctionBySrc(srcpath,tokpath,*funclist)
