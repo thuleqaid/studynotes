@@ -102,7 +102,7 @@ def formatExcelText(funcname,finfo):
                     # multiple function body for one dummy function
                     pass
                 flog[fcall].append(fother)
-    for key,value in sorted(flog.iteritems()):
+    for key,value in sorted(flog.items()):
         if len(value)==0:
             log.debug('No Function Body[%s] Found'%(key,))
             outtxt+='%s\t\tfunction\n'%(key,)

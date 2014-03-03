@@ -4,7 +4,7 @@ import re
 import shutil
 sys.path.append('./plugins')
 import ply.lex as lex
-from logutil import LogUtil, guessEncode
+from logutil import LogUtil, IOLog, IOLog1, IOLog2, IOLog3, guessEncode
 
 class SimpleToken(object):
     def __init__(self):
@@ -522,9 +522,6 @@ class CParser(object):
             tokens.append(tok)
         return tuple(tokens)
 
-    def _outputsrc(self,data):
-        #print data
-        pass
     def _nextTokenIdx(self,tokens,curidx):
         nextidx=curidx+1
         while nextidx<len(tokens):
@@ -532,6 +529,7 @@ class CParser(object):
                 break
             nextidx+=1
         return nextidx
+    @IOLog2
     def analyzeFile(self,tokens):
         toklen=len(tokens)
         ifdef=[] # lineno:tokenno:#xxx:value / lineno:tokenno:sts:#level:{level:[level:(level
@@ -597,7 +595,6 @@ class CParser(object):
                     idx=idx2
                 if not flag_instatement:
                     # #xxx
-                    self._outputsrc('%s%s'%(tokens[headidx].value,' '.join([t.value for t in tokens[headidx+1:idx]])))
                     headidx=self._nextTokenIdx(tokens,idx)
                     self._log.debug('->head_token:%d'%(headidx,))
             else:
@@ -640,19 +637,15 @@ class CParser(object):
                             ifdef.append('%d:%d:%d:%d:%d:%d:%d'%(tokens[idx].lineno,idx,sts,level0,level1,level2,level3))
                             outlist.append('%d:%d:%d:%d:VI:%s'%(tokens[varline].lineno,tokens[idx].lineno,varline,idx,varname))
                         # statement ends
-                        self._outputsrc(' '.join([t.value for t in tokens[headidx:idx+1]]))
                         headidx=self._nextTokenIdx(tokens,idx)
                         self._log.debug('->head_token:%d'%(headidx,))
                 elif tokens[idx].type=='COLON':
                     # label: / case xxx:
-                    self._outputsrc(' '.join([t.value for t in tokens[headidx:idx+1]]))
                     headidx=self._nextTokenIdx(tokens,idx)
                     self._log.debug('->head_token:%d'%(headidx,))
                 elif tokens[idx].type=='LBRACE':
                     if sts==0:
                         # left brace
-                        self._outputsrc(' '.join([t.value for t in tokens[headidx:idx]]))
-                        self._outputsrc(tokens[idx].value)
                         oldheadidx=headidx
                         funcdecl=' '.join([x.value for x in tokens[oldheadidx:idx] if x.type!='COMMENT'])
                         headidx=self._nextTokenIdx(tokens,idx)
@@ -683,8 +676,6 @@ class CParser(object):
                         pass
                     elif sts==2:
                         # left brace
-                        self._outputsrc(' '.join([t.value for t in tokens[headidx:idx]]))
-                        self._outputsrc(tokens[idx].value)
                         oldheadidx=headidx
                         headidx=self._nextTokenIdx(tokens,idx)
                         self._log.debug('->head_token:%d'%(headidx,))
@@ -699,8 +690,6 @@ class CParser(object):
                         pass
                     elif sts==2:
                         # right brace
-                        self._outputsrc(' '.join([t.value for t in tokens[headidx:idx]]))
-                        self._outputsrc(tokens[idx].value)
                         headidx=self._nextTokenIdx(tokens,idx)
                         self._log.debug('->head_token:%d'%(headidx,))
                         if level1-1==stslevel1:
@@ -745,6 +734,7 @@ class CParser(object):
                                 idx2-=1
             idx=self._nextTokenIdx(tokens,idx)
         return tuple(outlist)
+    @IOLog2
     def analyzeFunction(self,tokens):
         statements=self.splitFunction(0,tokens,0,len(tokens))
         funcs={}
@@ -760,9 +750,18 @@ class CParser(object):
         self._log.debug('inner function(s):%s'%(str(funcs),))
         return funcs
     def analyzeFunction2(self,tokens):
-        # ToDo
         statements=self.splitFunction(0,tokens,0,len(tokens))
         funcs={}
+        paramdict={}
+        autovardict={}
+        varsset=set()
+        typelist=( 'AUTO', 'CHAR', 'CONST', 'DOUBLE',
+                   'ENUM', 'EXTERN', 'FLOAT', 'INT', 'LONG', 'REGISTER',
+                   'SHORT', 'SIGNED', 'STATIC', 'STRUCT',
+                   'UNION', 'UNSIGNED', 'VOID', 'VOLATILE',
+                   'ID')
+        assignlist=('EQUALS', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL', 'PLUSEQUAL', 'MINUSEQUAL',
+                    'LSHIFTEQUAL','RSHIFTEQUAL', 'ANDEQUAL', 'XOREQUAL', 'OREQUAL')
         for statement in statements:
             # analyze functions called by current function
             if statement[0]>0:
@@ -775,38 +774,182 @@ class CParser(object):
             # analyze variables
             if statement[0]<1:
                 # function declaration
-                pass
+                yi=2
+                while yi<len(statement[1]) and statement[1][yi].type!='LPAREN':
+                    yi+=1
+                yj=len(statement[1])-1
+                while yj>yi and statement[1][yj].type!='RPAREN':
+                    yj-=1
+                # function name and return type
+                funcname=statement[1][yi-1].value
+                functype=' '.join([t.value for t in statement[1][0:yi-1]])
+                # function's parameters
+                yi=yi+1
+                while yi<yj:
+                    yk=yi+1
+                    while yk<yj and statement[1][yk].type!='COMMA':
+                        yk+=1
+                    if yi==yk-1:
+                        # void
+                        break
+                    else:
+                        yl=yi
+                        while yl<yk and statement[1][yl].type in typelist:
+                            yl+=1
+                        if statement[1][yl].type=='TIMES':
+                            paramtype=' '.join([t.value for t in statement[1][yi:yl]])
+                        else:
+                            yl-=1
+                            paramtype=' '.join([t.value for t in statement[1][yi:yl]])
+                        level1,level2,level3=0,0,0
+                        varstart,varstop=yl,0
+                        assignpos,pointlevel,arraylevel=0,0,0
+                        while yl<yk:
+                            if statement[1][yl].type=='LBRACE':
+                                level1+=1
+                            elif statement[1][yl].type=='RBRACE':
+                                level1-=1
+                            elif statement[1][yl].type=='LBRACKET':
+                                if level1==0 and level2==0 and level3==0:
+                                    arraylevel+=1
+                                    if varstop<=0:
+                                        varstop=yl
+                                level2+=1
+                            elif statement[1][yl].type=='RBRACKET':
+                                level2-=1
+                            elif statement[1][yl].type=='LPAREN':
+                                level3+=1
+                            elif statement[1][yl].type=='RPAREN':
+                                level3-=1
+                            elif statement[1][yl].type=='TIMES':
+                                if level1==0 and level2==0 and level3==0:
+                                    pointlevel+=1
+                                    varstart=yl+1
+                            yl+=1
+                        if varstop<=0:
+                            varstop=yk
+                        paramname=' '.join([t.value for t in statement[1][varstart:varstop]])
+                        paramdict[paramname]=(paramtype,pointlevel,arraylevel)
+                    yi=yk
             else:
                 # function body
-                typelist=( 'AUTO', 'CHAR', 'CONST', 'DOUBLE',
-                           'ENUM', 'EXTERN', 'FLOAT', 'INT', 'LONG', 'REGISTER',
-                           'SHORT', 'SIGNED', 'STATIC', 'STRUCT',
-                           'UNION', 'UNSIGNED', 'VOID', 'VOLATILE',
-                           'ID')
                 if len(statement[1])>1:
-                    if statement[1][0] in typelist and statement[1][1] in typelist:
+                    if statement[1][0].type=='PREPROCESSOR':
+                        statetype=0 # pre-process
+                    elif statement[1][0].type in typelist and (statement[1][1].type in typelist or statement[1][1].type=='TIMES'):
                         statetype=1 # variable definition
                     else:
                         statetype=2 # statement
                 else:
                     statetype=2
-                idlen=0
-                for yi,y in enumerate(statement[1]):
-                    if y.type=='ID':
-                        if idlen%2==0:
-                            idlen+=1
-                        else:
-                            idlen=1
-                    elif y.type in ('ARROW','PERIOD'):
-                        if idlen%2==1:
-                            idlen+=1
+                if statetype==1:
+                    # variable's type
+                    yi=0
+                    while yi<len(statement[1])-1 and statement[1][yi].type in typelist:
+                        yi+=1
+                    if statement[1][yi].type=='TIMES':
+                        vartype=' '.join([t.value for t in statement[1][0:yi]])
                     else:
-                        if idlen>0:
-                            print('\t'+' '.join([t.value for t in statement[1][yi-idlen:yi]]))
-                        idlen=0
-                if idlen>0:
-                    print('\t'+' '.join([t.value for t in statement[1][yi-idlen:yi]]))
+                        vartype=' '.join([t.value for t in statement[1][0:yi-1]])
+                        yi-=1
+                    # variable's name
+                    while yi<len(statement[1])-1:
+                        level1,level2,level3=0,0,0
+                        yj=yi
+                        varstart,varstop=yi,0
+                        assignpos,pointlevel,arraylevel=0,0,0
+                        while yj<len(statement[1])-1:
+                            if statement[1][yj].type=='LBRACE':
+                                level1+=1
+                            elif statement[1][yj].type=='RBRACE':
+                                level1-=1
+                            elif statement[1][yj].type=='LBRACKET':
+                                if level1==0 and level2==0 and level3==0:
+                                    arraylevel+=1
+                                    if varstop<=0:
+                                        varstop=yj
+                                level2+=1
+                            elif statement[1][yj].type=='RBRACKET':
+                                level2-=1
+                            elif statement[1][yj].type=='LPAREN':
+                                level3+=1
+                            elif statement[1][yj].type=='RPAREN':
+                                level3-=1
+                            elif statement[1][yj].type=='COMMA':
+                                if level1==0 and level2==0 and level3==0:
+                                    break
+                            elif statement[1][yj].type=='TIMES':
+                                if level1==0 and level2==0 and level3==0:
+                                    pointlevel+=1
+                                    varstart=yj+1
+                            elif statement[1][yj].type in assignlist:
+                                assignpos=yj # initialize in the definition
+                            yj+=1
+                        if assignpos>0:
+                            if varstop<=0:
+                                varstop=assignpos
+                            varname=' '.join([t.value for t in statement[1][varstart:varstop]])
+                            varvalue=' '.join([t.value for t in statement[1][assignpos:yj]])
+                        else:
+                            if varstop<=0:
+                                varstop=yj
+                            varname=' '.join([t.value for t in statement[1][varstart:varstop]])
+                            varvalue=None
+                        autovardict[varname]=(vartype,pointlevel,arraylevel)
+                        varsset.update(self._countVariable(statement[1][yi:yj+1]))
+                        yi=yj+1
+                elif statetype==2:
+                    if statement[1][0].type=='GOTO':
+                        # goto
+                        pass
+                    elif len(statement[1])>1 and statement[1][1].type=='COLON':
+                        # label
+                        pass
+                    else:
+                        varsset.update(self._countVariable(statement[1]))
+                else:
+                    # pre-processor
+                    pass
+        globalvars=set()
+        globalmacros=set()
+        for varname in tuple(varsset):
+            if varname in funcs:
+                pass
+            elif varname in paramdict:
+                pass
+            elif varname in autovardict:
+                pass
+            elif varname.upper()==varname:
+                globalmacros.add(varname)
+            else:
+                globalvars.add(varname)
+        print(funcs)
+        print(globalmacros)
+        print(globalvars)
         return funcs
+    def _countVariable(self,toklist):
+        #outlist=[]
+        outset=set()
+        idlen=0
+        for yi,y in enumerate(toklist):
+            if y.type=='ID':
+                if idlen%2==0:
+                    idlen+=1
+                else:
+                    idlen=1
+            elif y.type in ('ARROW','PERIOD'):
+                if idlen%2==1:
+                    idlen+=1
+            else:
+                if idlen>0:
+                    #outlist.append((yi-idlen,yi-1))
+                    outset.add(toklist[yi-idlen].value)
+                idlen=0
+        if idlen>0:
+            #outlist.append((yi-idlen,yi-1))
+            outset.add(toklist[yi-idlen].value)
+        return tuple(outset)
+    @IOLog
     def splitFunction(self,level,toklist,startidx,count):
         if count<=0:
             return (level,())
@@ -944,7 +1087,7 @@ class CParser(object):
                             level3+=1
                         elif toklist[idx].type=='RPAREN':
                             level3-=1
-                        elif toklist[idx].type=='SEMI':
+                        elif toklist[idx].type in ('SEMI','COLON'):
                             if level1==0 and level2==0 and level3==0:
                                 outlist.append((level,[t for t in toklist[headidx:idx+1] if t.type!='COMMENT']))
                                 break

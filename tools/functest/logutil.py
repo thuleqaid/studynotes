@@ -45,6 +45,59 @@ class LogUtil(object):
     def logger(self,logname):
         return getLogger(logname)
 
+def IOLog(func):
+    def wrapper(*args,**kv):
+        self=args[0]
+        if '_log' not in self.__dict__:
+            self._log=LogUtil().logger(self.__class__.__name__)
+        self._log.info('Entry:%s.%s'%(self.__class__.__name__,func.__name__,))
+        ret=func(*args,**kv)
+        self._log.info('Exit:%s.%s'%(self.__class__.__name__,func.__name__,))
+        return ret
+    return wrapper
+def IOLog1(func):
+    def wrapper(*args,**kv):
+        self=args[0]
+        if '_log' not in self.__dict__:
+            self._log=LogUtil().logger(self.__class__.__name__)
+        self._log.info('Entry:%s.%s'%(self.__class__.__name__,func.__name__,))
+        if len(args)>1:
+            self._log.debug('  Parameters:%s'%(str(args[1:]),))
+        if len(kv)>0:
+            self._log.debug('  Parameters:%s'%(str(kv),))
+        ret=func(*args,**kv)
+        self._log.info('Exit:%s.%s'%(self.__class__.__name__,func.__name__,))
+        return ret
+    return wrapper
+def IOLog2(func):
+    def wrapper(*args,**kv):
+        self=args[0]
+        if '_log' not in self.__dict__:
+            self._log=LogUtil().logger(self.__class__.__name__)
+        self._log.info('Entry:%s.%s'%(self.__class__.__name__,func.__name__,))
+        ret=func(*args,**kv)
+        self._log.info('Exit:%s.%s'%(self.__class__.__name__,func.__name__,))
+        if ret:
+            self._log.debug('  Return:%s'%(str(ret),))
+        return ret
+    return wrapper
+def IOLog3(func):
+    def wrapper(*args,**kv):
+        self=args[0]
+        if '_log' not in self.__dict__:
+            self._log=LogUtil().logger(self.__class__.__name__)
+        self._log.info('Entry:%s.%s'%(self.__class__.__name__,func.__name__,))
+        if len(args)>1:
+            self._log.debug('  Parameters:%s'%(str(args[1:]),))
+        if len(kv)>0:
+            self._log.debug('  Parameters:%s'%(str(kv),))
+        ret=func(*args,**kv)
+        self._log.info('Exit:%s.%s'%(self.__class__.__name__,func.__name__,))
+        if ret:
+            self._log.debug('  Return:%s'%(str(ret),))
+        return ret
+    return wrapper
+
 def guessEncode(fname,*encodelist):
     '''
     check file's encode

@@ -3,16 +3,12 @@ import sys
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 sys.path.append('..')
+sys.path.append('../plugins')
 from cparser import getTestFuncInfo
 from driverparser import formatExcelText
 sys.path.append('../ui')
 import funcfinder_ui
-
-try:
-    _fromUtf8 = QString.fromUtf8
-except AttributeError:
-    def _fromUtf8(s):
-        return s
+from funcfinder_ui import _fromUtf8
 
 class MyWindow(QMainWindow):
     def setupUi(self,ui):
@@ -28,9 +24,9 @@ class MyWindow(QMainWindow):
         tokpath=QFileDialog.getExistingDirectory(self,_fromUtf8("Choose Output Token Folder"))
         self._ui.edit_tok.setText(tokpath)
     def onBtnFind(self):
-        srcpath=self._ui.edit_src.text().toUtf8().data()
-        tokpath=self._ui.edit_tok.text().toUtf8().data()
-        func=self._ui.edit_func.text().toUtf8().data()
+        srcpath=self._ui.edit_src.text()
+        tokpath=self._ui.edit_tok.text()
+        func=self._ui.edit_func.text()
         self._fdict=getTestFuncInfo(srcpath,tokpath,func)
         lw=self._ui.listWidget
         lw.clear()
@@ -43,7 +39,7 @@ class MyWindow(QMainWindow):
         idx=self._ui.listWidget.currentRow()
         if idx<0:
             idx=0
-        fkeys=self._fdict.keys()
+        fkeys=list(self._fdict.keys())
         if len(fkeys)!=1:
             # no function searched
             return
