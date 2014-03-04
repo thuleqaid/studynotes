@@ -830,7 +830,7 @@ class CParser(object):
                             varstop=yk
                         paramname=' '.join([t.value for t in statement[1][varstart:varstop]])
                         paramdict[paramname]=(paramtype,pointlevel,arraylevel)
-                    yi=yk
+                    yi=yk+1
             else:
                 # function body
                 if len(statement[1])>1:
@@ -881,7 +881,8 @@ class CParser(object):
                             elif statement[1][yj].type=='TIMES':
                                 if level1==0 and level2==0 and level3==0:
                                     pointlevel+=1
-                                    varstart=yj+1
+                                    if assignpos<=0:
+                                        varstart=yj+1
                             elif statement[1][yj].type in assignlist:
                                 assignpos=yj # initialize in the definition
                             yj+=1
@@ -924,30 +925,43 @@ class CParser(object):
             else:
                 globalvars.add(varname)
         print(funcs)
+        print(paramdict)
+        print(autovardict)
         print(globalmacros)
         print(globalvars)
         return funcs
     def _countVariable(self,toklist):
-        #outlist=[]
         outset=set()
         idlen=0
-        for yi,y in enumerate(toklist):
+        skiplen=0
+        yi=0
+        while yi<len(toklist):
+            y=toklist[yi]
             if y.type=='ID':
                 if idlen%2==0:
                     idlen+=1
                 else:
                     idlen=1
+                    skiplen=0
             elif y.type in ('ARROW','PERIOD'):
                 if idlen%2==1:
                     idlen+=1
+            elif y.type=='LBRACKET':
+                level1,level2,level3=0,1,0
+                yj=yi+1
+                while yj<len(toklist) and toklist[yj].type!='RBRACKET':
+                    yj+=1
+                skiplen=yj-yi+1
+                outset.update(self._countVariable(toklist[yi+1:yj]))
+                yi=yj
             else:
                 if idlen>0:
-                    #outlist.append((yi-idlen,yi-1))
-                    outset.add(toklist[yi-idlen].value)
+                    outset.add(toklist[yi-idlen-skiplen].value)
                 idlen=0
+                skiplen=0
+            yi+=1
         if idlen>0:
-            #outlist.append((yi-idlen,yi-1))
-            outset.add(toklist[yi-idlen].value)
+            outset.add(toklist[yi-idlen-skiplen].value)
         return tuple(outset)
     @IOLog
     def splitFunction(self,level,toklist,startidx,count):
