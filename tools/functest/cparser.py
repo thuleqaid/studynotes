@@ -749,6 +749,98 @@ class CParser(object):
                         funcs[funcname]+=1
         self._log.debug('inner function(s):%s'%(str(funcs),))
         return funcs
+    def _analyzeStatement(self,tokens):
+        assignlist=('EQUALS', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL', 'PLUSEQUAL', 'MINUSEQUAL',
+                    'LSHIFTEQUAL','RSHIFTEQUAL', 'ANDEQUAL', 'XOREQUAL', 'OREQUAL')
+        crement=('PLUSPLUS','MINUSMINUS')
+        setpos=[]
+        crepos=[]
+        for yi,y in enumerate(tokens):
+            if y.type in assignlist:
+                setpos.add(yi)
+            elif y.type in crement:
+                crepos.add(yi)
+        if len(crepos)>0:
+            pass
+        else:
+            if len(setpos)>0:
+                pass
+            else:
+                # function call without return value
+                pass
+    def _analyzeVarDef(self,tokens):
+        # vartype *varname[]={}
+        outdict={'varinfo':[],
+                 'vars':[],
+                }
+        if len(tokens)<2:
+            return outdict
+        typelist=( 'AUTO', 'CHAR', 'CONST', 'DOUBLE',
+                   'ENUM', 'EXTERN', 'FLOAT', 'INT', 'LONG', 'REGISTER',
+                   'SHORT', 'SIGNED', 'STATIC', 'STRUCT',
+                   'UNION', 'UNSIGNED', 'VOID', 'VOLATILE',
+                   'ID')
+        assignlist=('EQUALS', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL', 'PLUSEQUAL', 'MINUSEQUAL',
+                    'LSHIFTEQUAL','RSHIFTEQUAL', 'ANDEQUAL', 'XOREQUAL', 'OREQUAL')
+        # variable's type
+        yi=0
+        while yi<len(tokens) and tokens[yi].type in typelist:
+            yi+=1
+        if yi<len(tokens) and tokens[yi].type=='TIMES':
+            vartype=' '.join([t.value for t in tokens[0:yi]])
+        else:
+            vartype=' '.join([t.value for t in tokens[0:yi-1]])
+            yi-=1
+        # variable's name
+        level1,level2,level3=0,0,0
+        yj=yi
+        varstart,varstop=yi,0
+        assignpos,pointlevel,arraylevel=0,0,0
+        pointflag=True
+        while yj<len(tokens):
+            if tokens[yj].type=='LBRACE':
+                pointflag=False
+                level1+=1
+            elif tokens[yj].type=='RBRACE':
+                level1-=1
+            elif tokens[yj].type=='LBRACKET':
+                pointflag=False
+                if level1==0 and level2==0 and level3==0:
+                    arraylevel+=1
+                    if varstop<=0:
+                        varstop=yj
+                level2+=1
+            elif tokens[yj].type=='RBRACKET':
+                level2-=1
+            elif tokens[yj].type=='LPAREN':
+                level3+=1
+            elif tokens[yj].type=='RPAREN':
+                level3-=1
+            elif tokens[yj].type=='TIMES':
+                if level1==0 and level2==0 and level3==0:
+                    if pointflag:
+                        pointlevel+=1
+                        varstart=yj+1
+            elif tokens[yj].type in assignlist:
+                assignpos=yj # initialize in the definition
+                pointflag=False
+            elif tokens[yj].type in ('COMMA','SEMI'):
+                if level1==0 and level2==0 and level3==0:
+                    break
+            yj+=1
+        if assignpos>0:
+            if varstop<=0:
+                varstop=assignpos
+            varname=' '.join([t.value for t in tokens[varstart:varstop]])
+            varvalue=' '.join([t.value for t in tokens[assignpos:yj]])
+        else:
+            if varstop<=0:
+                varstop=yj
+            varname=' '.join([t.value for t in tokens[varstart:varstop]])
+            varvalue=None
+        outdict['varinfo']=(varname,vartype,pointlevel,arraylevel)
+        outdict['vars']=self._countVariable(tokens)
+        return outdict
     def analyzeFunction2(self,tokens):
         statements=self.splitFunction(0,tokens,0,len(tokens))
         funcs={}
@@ -760,8 +852,6 @@ class CParser(object):
                    'SHORT', 'SIGNED', 'STATIC', 'STRUCT',
                    'UNION', 'UNSIGNED', 'VOID', 'VOLATILE',
                    'ID')
-        assignlist=('EQUALS', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL', 'PLUSEQUAL', 'MINUSEQUAL',
-                    'LSHIFTEQUAL','RSHIFTEQUAL', 'ANDEQUAL', 'XOREQUAL', 'OREQUAL')
         for statement in statements:
             # analyze functions called by current function
             if statement[0]>0:
@@ -781,8 +871,9 @@ class CParser(object):
                 while yj>yi and statement[1][yj].type!='RPAREN':
                     yj-=1
                 # function name and return type
-                funcname=statement[1][yi-1].value
-                functype=' '.join([t.value for t in statement[1][0:yi-1]])
+                vardef=self._analyzeVarDef(statement[1][0:yi])
+                funcname=vardef['varinfo'][0]
+                functype=vardef['varinfo'][1:]
                 # function's parameters
                 yi=yi+1
                 while yi<yj:
@@ -793,42 +884,11 @@ class CParser(object):
                         # void
                         break
                     else:
-                        yl=yi
-                        while yl<yk and statement[1][yl].type in typelist:
-                            yl+=1
-                        if statement[1][yl].type=='TIMES':
-                            paramtype=' '.join([t.value for t in statement[1][yi:yl]])
-                        else:
-                            yl-=1
-                            paramtype=' '.join([t.value for t in statement[1][yi:yl]])
-                        level1,level2,level3=0,0,0
-                        varstart,varstop=yl,0
-                        assignpos,pointlevel,arraylevel=0,0,0
-                        while yl<yk:
-                            if statement[1][yl].type=='LBRACE':
-                                level1+=1
-                            elif statement[1][yl].type=='RBRACE':
-                                level1-=1
-                            elif statement[1][yl].type=='LBRACKET':
-                                if level1==0 and level2==0 and level3==0:
-                                    arraylevel+=1
-                                    if varstop<=0:
-                                        varstop=yl
-                                level2+=1
-                            elif statement[1][yl].type=='RBRACKET':
-                                level2-=1
-                            elif statement[1][yl].type=='LPAREN':
-                                level3+=1
-                            elif statement[1][yl].type=='RPAREN':
-                                level3-=1
-                            elif statement[1][yl].type=='TIMES':
-                                if level1==0 and level2==0 and level3==0:
-                                    pointlevel+=1
-                                    varstart=yl+1
-                            yl+=1
-                        if varstop<=0:
-                            varstop=yk
-                        paramname=' '.join([t.value for t in statement[1][varstart:varstop]])
+                        vardef=self._analyzeVarDef(statement[1][yi:yk])
+                        paramname=vardef['varinfo'][0]
+                        paramtype=vardef['varinfo'][1]
+                        pointlevel=vardef['varinfo'][2]
+                        arraylevel=vardef['varinfo'][3]
                         paramdict[paramname]=(paramtype,pointlevel,arraylevel)
                     yi=yk+1
             else:
@@ -845,29 +905,16 @@ class CParser(object):
                 if statetype==1:
                     # variable's type
                     yi=0
-                    while yi<len(statement[1])-1 and statement[1][yi].type in typelist:
-                        yi+=1
-                    if statement[1][yi].type=='TIMES':
-                        vartype=' '.join([t.value for t in statement[1][0:yi]])
-                    else:
-                        vartype=' '.join([t.value for t in statement[1][0:yi-1]])
-                        yi-=1
-                    # variable's name
-                    while yi<len(statement[1])-1:
+                    yk=0
+                    while yi<len(statement[1]):
                         level1,level2,level3=0,0,0
                         yj=yi
-                        varstart,varstop=yi,0
-                        assignpos,pointlevel,arraylevel=0,0,0
                         while yj<len(statement[1])-1:
                             if statement[1][yj].type=='LBRACE':
                                 level1+=1
                             elif statement[1][yj].type=='RBRACE':
                                 level1-=1
                             elif statement[1][yj].type=='LBRACKET':
-                                if level1==0 and level2==0 and level3==0:
-                                    arraylevel+=1
-                                    if varstop<=0:
-                                        varstop=yj
                                 level2+=1
                             elif statement[1][yj].type=='RBRACKET':
                                 level2-=1
@@ -878,26 +925,18 @@ class CParser(object):
                             elif statement[1][yj].type=='COMMA':
                                 if level1==0 and level2==0 and level3==0:
                                     break
-                            elif statement[1][yj].type=='TIMES':
-                                if level1==0 and level2==0 and level3==0:
-                                    pointlevel+=1
-                                    if assignpos<=0:
-                                        varstart=yj+1
-                            elif statement[1][yj].type in assignlist:
-                                assignpos=yj # initialize in the definition
                             yj+=1
-                        if assignpos>0:
-                            if varstop<=0:
-                                varstop=assignpos
-                            varname=' '.join([t.value for t in statement[1][varstart:varstop]])
-                            varvalue=' '.join([t.value for t in statement[1][assignpos:yj]])
+                        if yk<1:
+                            vardef=self._analyzeVarDef(statement[1][yi:yj])
+                            typelen=vardef['varinfo'][1].count(' ')+1
                         else:
-                            if varstop<=0:
-                                varstop=yj
-                            varname=' '.join([t.value for t in statement[1][varstart:varstop]])
-                            varvalue=None
+                            vardef=self._analyzeVarDef(statement[1][0:typelen]+statement[1][yi:yj])
+                        varname=vardef['varinfo'][0]
+                        vartype=vardef['varinfo'][1]
+                        pointlevel=vardef['varinfo'][2]
+                        arraylevel=vardef['varinfo'][3]
                         autovardict[varname]=(vartype,pointlevel,arraylevel)
-                        varsset.update(self._countVariable(statement[1][yi:yj+1]))
+                        varsset.update(vardef['vars'])
                         yi=yj+1
                 elif statetype==2:
                     if statement[1][0].type=='GOTO':
@@ -908,6 +947,7 @@ class CParser(object):
                         pass
                     else:
                         varsset.update(self._countVariable(statement[1]))
+                        self._analyzeStatement(statement[1])
                 else:
                     # pre-processor
                     pass
