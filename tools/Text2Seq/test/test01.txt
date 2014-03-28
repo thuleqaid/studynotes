@@ -1,0 +1,7 @@
+#activate M3_DHC;
+M3_DHC [pfmsg] -> RPC [rpc_call][true] #MEMO[CPUí êM];
+RPC[pfmsg]+>Atom_DHC[pf_recv][ok] #MEMO[CPUí êM];
+Atom_DHC->Atom_STC[Get_Constant_stc][ok];
+Atom_DHC+>Atom_INF[Inf_set_info];
+Atom_DHC->Atom_STC[Get_Constant_stc][ng];
+RPC[pfmsg]+>Atom_STC[pf_recv][ok] #MEMO[CPUí êM];
