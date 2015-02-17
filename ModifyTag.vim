@@ -2,8 +2,10 @@
 " Object  : add modify history for c/c++ source
 " Author  :
 " Date    : 2015/02/17
-" Version : v0.3
+" Version : v0.4
 " ChangeLog
+" v0.4 2015/02/17
+"   add s:DenyChanges()
 " v0.3 2015/02/17
 "   add s:ApproveChanges()
 " v0.2 2015/02/17
@@ -19,6 +21,7 @@
 " 2. use <Leader>tm to count selected lines
 " CodeReview Command :
 " 1. use <Leader>to to approve selected lines
+" 2. use <Leader>tn to approve selected lines
 
 " Paramater I
 " this part should be unique for every project
@@ -50,6 +53,7 @@ command! -n=0 -rang -bar ModifyTagDelSource :call s:ModifyTag('del',<line1>,<lin
 command! -n=0 -bar ModifyTagSumLines :call s:SumModifiedLines()
 command! -n=0 -bar ModifyTagTerminalCmd :call s:GenerateCommand()
 command! -n=0 -rang -bar ModifyTagOKChanges :<line1>,<line2>call s:ApproveChanges()
+command! -n=0 -rang -bar ModifyTagNGChanges :<line1>,<line2>call s:DenyChanges()
 " key-binding
 nmap <Leader>ta :ModifyTagAddSource<CR>
 vmap <Leader>tc :ModifyTagChgSource<CR>
@@ -60,6 +64,8 @@ nmap <Leader>ts :ModifyTagSumLines<CR>
 nmap <Leader>tt :ModifyTagTerminalCmd<CR>
 nmap <Leader>to :ModifyTagOKChanges<CR>
 vmap <Leader>to :ModifyTagOKChanges<CR>
+nmap <Leader>tn :ModifyTagNGChanges<CR>
+vmap <Leader>tn :ModifyTagNGChanges<CR>
 
 function! s:ApproveChanges() range
 	let l:pos = s:tellPos(a:firstline, a:lastline)
@@ -77,6 +83,25 @@ function! s:ApproveChanges() range
 			call s:approveChgBlock(l:line1, l:line2, l:line3, l:line4)
 		elseif l:type == 'del'
 			call s:approveDelBlock(l:line1, l:line2, l:line3, l:line4)
+		endif
+	endwhile
+endfunction
+function! s:DenyChanges() range
+	let l:pos = s:tellPos(a:firstline, a:lastline)
+	let l:i   = len(l:pos) - 5
+	while l:i >= 0
+		let l:type  = get(l:pos,l:i)
+		let l:line1 = get(l:pos,l:i+1)
+		let l:line2 = get(l:pos,l:i+2)
+		let l:line3 = get(l:pos,l:i+3)
+		let l:line4 = get(l:pos,l:i+4)
+		let l:i     = l:i - 5
+		if l:type == 'add'
+			call s:denyAddBlock(l:line1, l:line2, l:line3, l:line4)
+		elseif l:type == 'chg'
+			call s:denyChgBlock(l:line1, l:line2, l:line3, l:line4)
+		elseif l:type == 'del'
+			call s:denyDelBlock(l:line1, l:line2, l:line3, l:line4)
 		endif
 	endwhile
 endfunction
@@ -535,8 +560,10 @@ function! s:approveAddBlock(blockline1, blockline2, appline1, appline2)
 			silent! exe "normal ".a:blockline1."G".(s:tag_allowr + s:tag_mode + 2)."dd"
 		else
 			let l:applines = a:appline2 - (a:blockline1 + 2 + s:tag_allowr + s:tag_mode)
-			if l:applines >= 0
+			if l:applines > 0
 				silent! exe "normal ".a:blockline1."G".(s:tag_allowr + s:tag_mode + 2)."dd".l:applines."jp"
+			elseif l:applines == 0
+				silent! exe "normal ".a:blockline1."G".(s:tag_allowr + s:tag_mode + 2)."ddp"
 			endif
 		endif
 	else
@@ -601,5 +628,84 @@ function! s:approveChgBlock(blockline1, blockline2, appline1, appline2)
 	else
 		"approve region locates before #else
 		call s:approveDelBlock(a:blockline1, l:midline + 1, a:appline1, a:appline2)
+	endif
+endfunction
+function! s:denyAddBlock(blockline1, blockline2, appline1, appline2)
+	if a:appline1 <= a:blockline1 + 2 + s:tag_allowr + s:tag_mode
+		"deny region begins at the beginning of the block
+		if a:appline2 >= a:blockline2 - 1 - s:tag_mode
+			"deny region ends at the ending of the block
+			silent! exe "normal ".a:blockline1."G".(a:blockline2 - a:blockline1 + 1)."dd"
+		else
+			let l:applines = a:appline2 - (a:blockline1 + 2 + s:tag_allowr + s:tag_mode)
+			if l:applines >= 0
+				silent! exe "normal ".(a:blockline1 + 2 + s:tag_allowr + s:tag_mode)."G".(l:applines + 1)."dd"
+			endif
+		endif
+	else
+		if a:appline2 >= a:blockline2 - 1 - s:tag_mode
+			"deny region ends at the ending of the block
+			let l:applines = a:blockline2 - 1 - s:tag_mode - a:appline1
+			if l:applines >= 0
+				silent! exe "normal ".a:appline1."G".(l:applines + 1)."dd"
+			endif
+		else
+			silent! exe "normal ".a:appline1."G".(a:appline2 - a:appline1 + 1)."dd"
+		endif
+	endif
+endfunction
+function! s:denyDelBlock(blockline1, blockline2, appline1, appline2)
+	if a:appline1 <= a:blockline1 + 3 + s:tag_allowr
+		"deny region begins at the beginning of the block
+		if a:appline2 >= a:blockline2 - 2
+			"deny region ends at the ending of the block
+			silent! exe "normal ".(a:blockline2 - 1)."G2dd"
+			silent! exe "normal ".a:blockline1."G".(s:tag_allowr + 3)."dd"
+		else
+			let l:applines = a:appline2 - (a:blockline1 + 3 + s:tag_allowr)
+			if l:applines > 0
+				silent! exe "normal ".a:blockline1."G".(s:tag_allowr + 3)."dd".l:applines."jp"
+			elseif l:applines == 0
+				silent! exe "normal ".a:blockline1."G".(s:tag_allowr + 3)."ddp"
+			endif
+		endif
+	else
+		if a:appline2 >= a:blockline2 - 2
+			"deny region ends at the ending of the block
+			let l:applines = a:blockline2 - 2 - a:appline1
+			if l:applines >= 0
+				silent! exe "normal ".(a:blockline2-1)."G2dd".(l:applines+1)."kP"
+			endif
+		else
+			silent! exe "normal ".a:blockline1."G".(s:tag_allowr + 3)."Y".a:appline2."Gp"
+			silent! exe "normal ".(a:blockline2 + 3)."G2Y".a:appline1."GP"
+		endif
+	endif
+endfunction
+function! s:denyChgBlock(blockline1, blockline2, appline1, appline2)
+	let l:midline = s:splitChgBlock(a:blockline1, a:blockline2)
+	if l:midline <= a:appline1
+		"deny region locates after #else
+		let l:newappline1   = a:appline1 + 3 + s:tag_allowr + s:tag_mode
+		let l:newappline2   = a:appline2 + 3 + s:tag_allowr + s:tag_mode
+		let l:newblockline2 = a:blockline2 + 2 + s:tag_allowr + s:tag_mode
+		if l:newappline1 > l:newblockline2
+			let l:newappline1 = l:newblockline2
+		endif
+		if l:newappline2 > l:newblockline2
+			let l:newappline2 = l:newblockline2
+		endif
+		call s:denyAddBlock(l:midline + 2, l:newblockline2, l:newappline1, l:newappline2)
+	elseif l:midline < a:appline2
+		let l:newappline2   = a:appline2 + 3 + s:tag_allowr + s:tag_mode
+		let l:newblockline2 = a:blockline2 + 2 + s:tag_allowr + s:tag_mode
+		if l:newappline2 > l:newblockline2
+			let l:newappline2 = l:newblockline2
+		endif
+		call s:denyAddBlock(l:midline + 2, l:newblockline2, l:midline + 2, l:newappline2)
+		call s:denyDelBlock(a:blockline1, l:midline + 1, a:appline1, l:midline + 1)
+	else
+		"deny region locates before #else
+		call s:denyDelBlock(a:blockline1, l:midline + 1, a:appline1, a:appline2)
 	endif
 endfunction
