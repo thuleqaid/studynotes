@@ -2,8 +2,10 @@
 " Object  : add modify history for c/c++ source
 " Author  :
 " Date    : 2015/02/17
-" Version : v0.2
+" Version : v0.3
 " ChangeLog
+" v0.3 2015/02/17
+"   add s:ApproveChanges()
 " v0.2 2015/02/17
 "   add s:SumModifiedLines()
 "   add s:GenerateCommand()
@@ -14,7 +16,9 @@
 " 3. open result.txt after run step2's command, use <Leader>ts to summarize the result
 " Manual Command :
 " 1. use <Leader>tu to update lines of modified code in the current file
-" 2. use <Leader>tm to count lines of selected region
+" 2. use <Leader>tm to count selected lines
+" CodeReview Command :
+" 1. use <Leader>to to approve selected lines
 
 " Paramater I
 " this part should be unique for every project
@@ -23,6 +27,7 @@ let s:tag_key2   = 'hijk' "optional
 let s:tag_key3   = 'wxyz' "optional
 let s:tag_reason = 'xxxyyyzzz' "default modify-reason
 let s:tag_co     = '' "compile option, valid only if s:tag_mode == 1
+let s:tag_allowr = 1 "0: without reason line, 1: with reason line
 " Paramater II
 " this part should be unique for every people
 let s:tag_user   = 'anonymous'
@@ -44,6 +49,7 @@ command! -n=0 -rang -bar ModifyTagChgSource :call s:ModifyTag('chg',<line1>,<lin
 command! -n=0 -rang -bar ModifyTagDelSource :call s:ModifyTag('del',<line1>,<line2>)
 command! -n=0 -bar ModifyTagSumLines :call s:SumModifiedLines()
 command! -n=0 -bar ModifyTagTerminalCmd :call s:GenerateCommand()
+command! -n=0 -rang -bar ModifyTagOKChanges :<line1>,<line2>call s:ApproveChanges()
 " key-binding
 nmap <Leader>ta :ModifyTagAddSource<CR>
 vmap <Leader>tc :ModifyTagChgSource<CR>
@@ -52,7 +58,28 @@ nmap <Leader>tu :ModifyTagUpdateLines<CR>
 vmap <Leader>tm :ModifyTagManualCount<CR>
 nmap <Leader>ts :ModifyTagSumLines<CR>
 nmap <Leader>tt :ModifyTagTerminalCmd<CR>
+nmap <Leader>to :ModifyTagOKChanges<CR>
+vmap <Leader>to :ModifyTagOKChanges<CR>
 
+function! s:ApproveChanges() range
+	let l:pos = s:tellPos(a:firstline, a:lastline)
+	let l:i   = len(l:pos) - 5
+	while l:i >= 0
+		let l:type  = get(l:pos,l:i)
+		let l:line1 = get(l:pos,l:i+1)
+		let l:line2 = get(l:pos,l:i+2)
+		let l:line3 = get(l:pos,l:i+3)
+		let l:line4 = get(l:pos,l:i+4)
+		let l:i     = l:i - 5
+		if l:type == 'add'
+			call s:approveAddBlock(l:line1, l:line2, l:line3, l:line4)
+		elseif l:type == 'chg'
+			call s:approveChgBlock(l:line1, l:line2, l:line3, l:line4)
+		elseif l:type == 'del'
+			call s:approveDelBlock(l:line1, l:line2, l:line3, l:line4)
+		endif
+	endwhile
+endfunction
 function! s:GenerateCommand()
 	let l:keyword  = escape(s:constructKeyword(), s:ptn_escape)
 	let l:command  = ":silent! echo find . -regex '.*\\.\\(c\\|h\\)' | xargs -i sh -c \"vim -s mtupdate.vim {};grep -Hn '" . l:keyword ."' {} >> result.txt\""
@@ -152,26 +179,22 @@ function! s:countList()
 		if l:type == 'add'
 			call add(l:cntlist, 'add')
 			call add(l:cntlist, l:line1+1)
-			if s:tag_mode == 0
-				let l:cnt = s:countSourceLines(l:line1+3,l:line2-1)
-			else
-				let l:cnt = s:countSourceLines(l:line1+4,l:line2-2)
-			endif
+			let l:cnt = s:countSourceLines(l:line1+2+s:tag_allowr+s:tag_mode,l:line2-1-s:tag_mode)
 			call extend(l:cntlist, l:cnt)
 		elseif l:type == 'chg'
 			call add(l:cntlist, 'chg')
 			call add(l:cntlist, l:line1+1)
-			call setpos('.', [0, l:line1+3, 1, 0])
+			call setpos('.', [0, l:line1+2+s:tag_allowr, 1, 0])
 			call searchpair('#if','#else','#endif')
 			let l:midline = line('.')
-			let l:cnt = s:countSourceLines(l:line1+4,l:midline-1)
+			let l:cnt = s:countSourceLines(l:line1+3+s:tag_allowr,l:midline-1)
 			call extend(l:cntlist, l:cnt)
 			let l:cnt = s:countSourceLines(l:midline+1,l:line2-2)
 			call extend(l:cntlist, l:cnt)
 		elseif l:type == 'del'
 			call add(l:cntlist, 'del')
 			call add(l:cntlist, l:line1+1)
-			let l:cnt = s:countSourceLines(l:line1+4,l:line2-2)
+			let l:cnt = s:countSourceLines(l:line1+3+s:tag_allowr,l:line2-2)
 			call extend(l:cntlist, l:cnt)
 		endif
 		let l:i   = l:i + 3
@@ -279,7 +302,7 @@ function! s:constructKeywordLine(type)
 	return l:output
 endfunction
 function! s:constructReasonLine()
-	let l:msg    = input("Reason: ", "xxxyyyzzz")
+	let l:msg    = input("Reason: ", s:tag_reason)
 	let l:output = s:cmt_start . l:msg . s:cmt_end
 	return l:output
 endfunction
@@ -377,8 +400,10 @@ function! s:ModifyTag(type, startlineno, endlineno)
 	let l:curlineno += 1
 	call append(l:curlineno, s:constructKeywordLine(a:type))
 	let l:curlineno += 1
-	call append(l:curlineno, s:constructReasonLine())
-	let l:curlineno += 1
+	if s:tag_allowr > 0
+		call append(l:curlineno, s:constructReasonLine())
+		let l:curlineno += 1
+	endif
 	let l:ifelend = s:constructIfLine(a:type)
 	if l:ifelend != ''
 		call append(l:curlineno, l:ifelend)
@@ -418,3 +443,163 @@ function! s:ModifyTag(type, startlineno, endlineno)
 	call setpos('.', [0, l:poslineno, 0, 0])
 endfunction
 
+function! s:splitChgBlock(startline, endline)
+	call setpos('.', [0, a:startline + 2 + s:tag_allowr, 1, 0])
+	call searchpair('#if','#else','#endif')
+	let l:endtext = getline(a:endline)
+	let l:midline = line('.')
+	" change part after #else into an ADD block
+	" #endif for ADD block
+	let l:ifelend = s:constructEndifLine('add')
+	if l:ifelend != ''
+		call setline(a:endline-1, l:ifelend)
+	else
+		silent! exe "normal ".(a:endline - 1)."Gdd"
+	endif
+	let l:curlineno = l:midline
+	" copy start line
+	let l:linetext  = getline(a:startline)
+	call append(l:curlineno, l:linetext)
+	let l:curlineno = l:curlineno + 1
+	" copy keyword line
+	let l:linetext  = getline(a:startline + 1)
+	let l:linetext  = substitute(l:linetext, '\CCHG\[\d*\]\[\d*\]_\[\d*\]\[\d*\]', 'ADD[][]', '')
+	call append(l:curlineno, l:linetext)
+	let l:curlineno = l:curlineno + 1
+	" copy reason line
+	if s:tag_allowr > 0
+		let l:linetext  = getline(a:startline + 2)
+		call append(l:curlineno, l:linetext)
+		let l:curlineno = l:curlineno + 1
+	endif
+	" add #if according to s:tag_mode
+	let l:ifelend = s:constructIfLine('add')
+	if l:ifelend != ''
+		call append(l:curlineno, l:ifelend)
+		let l:curlineno += 1
+	endif
+	" change part before #else into an DEL block
+	" #endif for DEL block
+	let l:ifelend = s:constructEndifLine('del')
+	call setline(l:midline, l:ifelend)
+	" copy end line
+	call append(l:midline, l:endtext)
+	" modify keyword line
+	let l:linetext  = getline(a:startline + 1)
+	let l:linetext  = substitute(l:linetext, '\CCHG\[\d*\]\[\d*\]_\[\d*\]\[\d*\]', 'DEL[][]', '')
+	call setline(a:startline+1, l:linetext)
+	return l:midline
+endfunction
+function! s:tellPos(startlineno, endlineno)
+	let l:oldpos    = getpos('.')
+	let l:rangelist = s:modifyList()
+	let l:startline = a:startlineno
+	let l:endline   = a:endlineno
+	let l:grouplist = []
+	let l:i         = 0
+	while l:i < len(l:rangelist)
+		let l:type  = get(l:rangelist,l:i)
+		let l:line1 = get(l:rangelist,l:i+1)
+		let l:line2 = get(l:rangelist,l:i+2)
+		let l:i = l:i + 3
+		if l:startline < l:line1
+			let l:startline = l:line1
+			if l:startline > l:endline
+				break
+			endif
+		endif
+		if l:startline <= l:line2
+			call add(l:grouplist, l:type)
+			call add(l:grouplist, l:line1)
+			call add(l:grouplist, l:line2)
+			call add(l:grouplist, l:startline)
+			if l:endline <= l:line2
+				call add(l:grouplist, l:endline)
+				let l:startline = l:endline + 1
+				break
+			else
+				call add(l:grouplist, l:line2)
+				let l:startline = l:line2 + 1
+			endif
+		endif
+	endwhile
+	call setpos('.', l:oldpos)
+	return l:grouplist
+endfunction
+function! s:approveAddBlock(blockline1, blockline2, appline1, appline2)
+	if a:appline1 <= a:blockline1 + 2 + s:tag_allowr + s:tag_mode
+		"approve region begins at the beginning of the block
+		if a:appline2 >= a:blockline2 - 1 - s:tag_mode
+			"approve region ends at the ending of the block
+			silent! exe "normal ".(a:blockline2 - s:tag_mode)."G".(s:tag_mode + 1)."dd"
+			silent! exe "normal ".a:blockline1."G".(s:tag_allowr + s:tag_mode + 2)."dd"
+		else
+			let l:applines = a:appline2 - (a:blockline1 + 2 + s:tag_allowr + s:tag_mode)
+			if l:applines >= 0
+				silent! exe "normal ".a:blockline1."G".(s:tag_allowr + s:tag_mode + 2)."dd".l:applines."jp"
+			endif
+		endif
+	else
+		if a:appline2 >= a:blockline2 - 1 - s:tag_mode
+			"approve region ends at the ending of the block
+			let l:applines = a:blockline2 - 1 - s:tag_mode - a:appline1
+			if l:applines >= 0
+				silent! exe "normal ".(a:blockline2-s:tag_mode)."G".(s:tag_mode + 1)."dd".(l:applines+1)."kP"
+			endif
+		else
+			silent! exe "normal ".a:blockline1."G".(s:tag_allowr + s:tag_mode + 2)."Y".a:appline2."Gp"
+			silent! exe "normal ".(a:blockline2 + s:tag_allowr + 2)."G".(s:tag_mode + 1)."Y".a:appline1."GP"
+		endif
+	endif
+endfunction
+function! s:approveDelBlock(blockline1, blockline2, appline1, appline2)
+	if a:appline1 <= a:blockline1 + 3 + s:tag_allowr
+		"approve region begins at the beginning of the block
+		if a:appline2 >= a:blockline2 - 2
+			"approve region ends at the ending of the block
+			silent! exe "normal ".a:blockline1."G".(a:blockline2 - a:blockline1 + 1)."dd"
+		else
+			let l:applines = a:appline2 - (a:blockline1 + 3 + s:tag_allowr)
+			if l:applines >= 0
+				silent! exe "normal ".(a:blockline1 + 3 + s:tag_allowr)."G".(l:applines + 1)."dd"
+			endif
+		endif
+	else
+		if a:appline2 >= a:blockline2 - 2
+			"approve region ends at the ending of the block
+			let l:applines = a:blockline2 - 2 - a:appline1
+			if l:applines >= 0
+				silent! exe "normal ".a:appline1."G".(l:applines + 1)."dd"
+			endif
+		else
+			silent! exe "normal ".a:appline1."G".(a:appline2 - a:appline1 + 1)."dd"
+		endif
+	endif
+endfunction
+function! s:approveChgBlock(blockline1, blockline2, appline1, appline2)
+	let l:midline = s:splitChgBlock(a:blockline1, a:blockline2)
+	if l:midline <= a:appline1
+		"approve region locates after #else
+		let l:newappline1   = a:appline1 + 3 + s:tag_allowr + s:tag_mode
+		let l:newappline2   = a:appline2 + 3 + s:tag_allowr + s:tag_mode
+		let l:newblockline2 = a:blockline2 + 2 + s:tag_allowr + s:tag_mode
+		if l:newappline1 > l:newblockline2
+			let l:newappline1 = l:newblockline2
+		endif
+		if l:newappline2 > l:newblockline2
+			let l:newappline2 = l:newblockline2
+		endif
+		call s:approveAddBlock(l:midline + 2, l:newblockline2, l:newappline1, l:newappline2)
+	elseif l:midline < a:appline2
+		let l:newappline2   = a:appline2 + 3 + s:tag_allowr + s:tag_mode
+		let l:newblockline2 = a:blockline2 + 2 + s:tag_allowr + s:tag_mode
+		if l:newappline2 > l:newblockline2
+			let l:newappline2 = l:newblockline2
+		endif
+		call s:approveAddBlock(l:midline + 2, l:newblockline2, l:midline + 2, l:newappline2)
+		call s:approveDelBlock(a:blockline1, l:midline + 1, a:appline1, l:midline + 1)
+	else
+		"approve region locates before #else
+		call s:approveDelBlock(a:blockline1, l:midline + 1, a:appline1, a:appline2)
+	endif
+endfunction
