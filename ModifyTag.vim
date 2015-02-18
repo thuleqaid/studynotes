@@ -1,6 +1,6 @@
 " Name    : ModifyTag
 " Object  : add modify history for c/c++ source
-" Author  :
+" Author  : thuleqaid@163.com
 " Date    : 2015/02/17
 " Version : v0.4
 " ChangeLog
