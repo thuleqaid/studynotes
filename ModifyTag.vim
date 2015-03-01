@@ -1,9 +1,14 @@
 " Name    : ModifyTag
 " Object  : add modify history for c/c++ source
 " Author  : thuleqaid@163.com
-" Date    : 2015/02/17
-" Version : v0.4
+" Date    : 2015/03/01
+" Version : v0.5
 " ChangeLog
+" v0.5 2015/03/01
+"   modify terminal command
+"   swap position of author and date in the keyword line
+"   adjust line count format in the keyword line
+"   add option s:rm_prefix
 " v0.4 2015/02/17
 "   add s:DenyChanges()
 " v0.3 2015/02/17
@@ -36,14 +41,15 @@ let s:tag_allowr = 1 "0: without reason line, 1: with reason line
 let s:tag_user   = 'anonymous'
 " Paramater III
 " this part should be same for every people
-let s:tag_start  = '=================start=================='
-let s:tag_end    = '==================end==================='
-let s:cmt_start  = '/* '
-let s:cmt_end    = ' */'
+let s:tag_start  = '/*$$$$$$$$$$$$$$$$$CorrectStart$$$$$$$$$$$$$$$$$$*/'
+let s:tag_end    = '/*$$$$$$$$$$$$$$$$$$CorrectEnd$$$$$$$$$$$$$$$$$$$*/'
+let s:cmt_start  = '/*$$$ '
+let s:cmt_end    = '*/'
 let s:tag_mode   = 0  "0: [#if] for chg and del, 1:[#if] for add, chg and del
 let s:tag_timef  = "%Y/%m/%d"
 let s:tag_sep    = ','
 let s:ptn_escape = '/*[]()'
+let s:rm_prefix  = '' "prefix that will be added at the beginning of every deleted line
 " define command
 command! -n=0 -bar ModifyTagUpdateLines :call s:CalculateModifiedLines()
 command! -n=0 -rang=% -bar ModifyTagManualCount :<line1>,<line2>call s:CountLines()
@@ -107,7 +113,7 @@ function! s:DenyChanges() range
 endfunction
 function! s:GenerateCommand()
 	let l:keyword  = escape(s:constructKeyword(), s:ptn_escape)
-	let l:command  = ":silent! echo find . -regex '.*\\.\\(c\\|h\\)' | xargs -i sh -c \"vim -s mtupdate.vim {};grep -Hn '" . l:keyword ."' {} >> result.txt\""
+	let l:command  = ":silent! echo find . -iregex '.*\\.\\(c\\|cxx\\|cpp\\|h\\|hxx\\|hpp\\)' | xargs -i sh -c \"vim -s mtupdate.vim {};grep -Hn '" . l:keyword ."' {} >> result.txt\""
 	call append(line('$'), ':silent! echo Save this file as "mtupdate.vim"')
 	call append(line('$'), ':silent! echo Terminal Command')
 	call append(line('$'), l:command)
@@ -126,7 +132,7 @@ function! s:SumModifiedLines()
 	let l:total7   = 0
 	let l:total8   = 0
 	let l:i        = 1
-	call append(line('$'), "File\tLineNo\tADD_Total\tADD_Code\tCHG_Total_Old\tCHG_Code_Old\tCHG_Total_New\tCHG_Code_New\tDEL_Total\tDEL_Code\tAuthor\tDate")
+	call append(line('$'), "File\tLineNo\tADD_Total\tADD_Code\tCHG_Total_Old\tCHG_Code_Old\tCHG_Total_New\tCHG_Code_New\tDEL_Total\tDEL_Code\tDate\tAuthor")
 	while l:i <= l:lastline
 		let l:text = getline(l:i)
 		if stridx(l:text, l:keyword) > 0
@@ -134,10 +140,10 @@ function! s:SumModifiedLines()
 			let l:text = substitute(l:text, escape(s:cmt_end, s:ptn_escape), '', '')
 			let l:text = substitute(l:text, escape(s:tag_sep . l:keyword . s:tag_sep, s:ptn_escape), ':', '')
 			" add ':' between author and date
-			let l:text = substitute(l:text, ' ', ':', '')
-			let l:text = substitute(l:text, '\CADD\[\(\d*\)\]\[\(\d*\)\]', '\1:\2::::::', '')
-			let l:text = substitute(l:text, '\CCHG\[\(\d*\)\]\[\(\d*\)\]_\[\(\d*\)\]\[\(\d*\)\]', '::\1:\2:\3:\4::', '')
-			let l:text = substitute(l:text, '\CDEL\[\(\d*\)\]\[\(\d*\)\]', '::::::\1:\2', '')
+			let l:text = substitute(l:text, escape(s:tag_sep, s:ptn_escape), ':', '')
+			let l:text = substitute(l:text, '\CADD\[\(\d*\)\]_\[\(\d*\)\]', '\1:\2::::::', '')
+			let l:text = substitute(l:text, '\CCHG\[\(\d*\)\]_\[\(\d*\)\] -> \[\(\d*\)\]_\[\(\d*\)\]', '::\1:\2:\3:\4::', '')
+			let l:text = substitute(l:text, '\CDEL\[\(\d*\)\]_\[\(\d*\)\]', '::::::\1:\2', '')
 			" sum lines
 			let l:pos1 = match(l:text, ':', 0, 2)
 			let l:pos2 = match(l:text, ':', l:pos1+1, 8)
@@ -174,19 +180,19 @@ function! s:CalculateModifiedLines()
 		let l:line2 = get(l:cntlist,l:i+3)
 		let l:i     = l:i + 4
 		if l:type == 'add'
-			let l:rep = 'ADD[' . l:line1 . '][' . l:line2 . ']'
-			let l:res = substitute(getline(l:line0), '\CADD\[\d*\]\[\d*\]', l:rep, "")
+			let l:rep = 'ADD[' . l:line1 . ']_[' . l:line2 . ']'
+			let l:res = substitute(getline(l:line0), '\CADD\[\d*\]_\[\d*\]', l:rep, "")
 			call setline(l:line0, l:res)
 		elseif l:type == 'chg'
 			let l:line3 = get(l:cntlist,l:i)
 			let l:line4 = get(l:cntlist,l:i+1)
 			let l:i     = l:i + 2
-			let l:rep   = 'CHG[' . l:line1 . '][' . l:line2 . ']_[' . l:line3 . '][' . l:line4 . ']'
-			let l:res = substitute(getline(l:line0), '\CCHG\[\d*\]\[\d*\]_\[\d*\]\[\d*\]', l:rep, "")
+			let l:rep   = 'CHG[' . l:line1 . ']_[' . l:line2 . '] -> [' . l:line3 . ']_[' . l:line4 . ']'
+			let l:res = substitute(getline(l:line0), '\CCHG\[\d*\]_\[\d*\] -> \[\d*\]_\[\d*\]', l:rep, "")
 			call setline(l:line0, l:res)
 		elseif l:type == 'del'
-			let l:rep = 'DEL[' . l:line1 . '][' . l:line2 . ']'
-			let l:res = substitute(getline(l:line0), '\CDEL\[\d*\]\[\d*\]', l:rep, "")
+			let l:rep = 'DEL[' . l:line1 . ']_[' . l:line2 . ']'
+			let l:res = substitute(getline(l:line0), '\CDEL\[\d*\]_\[\d*\]', l:rep, "")
 			call setline(l:line0, l:res)
 		endif
 	endwhile
@@ -273,6 +279,7 @@ function! s:rmMultilineComment()
 endfunction
 function! s:countSourceLines(startlineno, endlineno)
 	silent! redir => dummy
+	call s:decodeDeleteBlock(a:startlineno, a:endlineno)
 	" delete lines after range
 	if a:endlineno < line('$')
 		silent! exe "normal ".(a:endlineno+1)."G"
@@ -297,11 +304,11 @@ function! s:countSourceLines(startlineno, endlineno)
 endfunction
 
 function! s:constructStartLine()
-	let l:output = s:cmt_start . s:tag_start . s:cmt_end
+	let l:output = s:tag_start
 	return l:output
 endfunction
 function! s:constructEndLine()
-	let l:output = s:cmt_start . s:tag_end . s:cmt_end
+	let l:output = s:tag_end
 	return l:output
 endfunction
 function! s:constructKeyword()
@@ -316,14 +323,14 @@ function! s:constructKeyword()
 endfunction
 function! s:constructKeywordLine(type)
 	if a:type == 'add'
-		let l:addtag = 'ADD[][]'
+		let l:addtag = 'ADD[]_[]'
 	elseif a:type == 'chg'
-		let l:addtag = 'CHG[][]_[][]'
+		let l:addtag = 'CHG[]_[] -> []_[]'
 	elseif a:type == 'del'
-		let l:addtag = 'DEL[][]'
+		let l:addtag = 'DEL[]_[]'
 	endif
 	let l:curtime = strftime(s:tag_timef)
-	let l:output = s:cmt_start . l:addtag . s:tag_sep . s:constructKeyword() . s:tag_sep . s:tag_user . ' ' . l:curtime . s:cmt_end
+	let l:output = s:cmt_start . l:addtag . s:tag_sep . s:constructKeyword() . s:tag_sep . l:curtime . s:tag_sep . s:tag_user . s:cmt_end
 	return l:output
 endfunction
 function! s:constructReasonLine()
@@ -442,6 +449,7 @@ function! s:ModifyTag(type, startlineno, endlineno)
 		let l:poslineno = l:curlineno
 	elseif a:type == 'chg'
 		" skip select lines
+		call s:encodeDeleteBlock(l:curlineno + 1, l:curlineno + a:endlineno - a:startlineno + 1)
 		let l:curlineno = l:curlineno + a:endlineno - a:startlineno + 1
 		" add #else
 		let l:ifelend = s:constructElseLine(a:type)
@@ -455,6 +463,7 @@ function! s:ModifyTag(type, startlineno, endlineno)
 		let l:poslineno = l:curlineno
 	elseif a:type == 'del'
 		" skip select lines
+		call s:encodeDeleteBlock(l:curlineno + 1, l:curlineno + a:endlineno - a:startlineno + 1)
 		let l:curlineno = l:curlineno + a:endlineno - a:startlineno + 1
 		let l:poslineno = l:curlineno
 	endif
@@ -488,7 +497,7 @@ function! s:splitChgBlock(startline, endline)
 	let l:curlineno = l:curlineno + 1
 	" copy keyword line
 	let l:linetext  = getline(a:startline + 1)
-	let l:linetext  = substitute(l:linetext, '\CCHG\[\d*\]\[\d*\]_\[\d*\]\[\d*\]', 'ADD[][]', '')
+	let l:linetext  = substitute(l:linetext, '\CCHG\[\d*\]_\[\d*\] -> \[\d*\]_\[\d*\]', 'ADD[]_[]', '')
 	call append(l:curlineno, l:linetext)
 	let l:curlineno = l:curlineno + 1
 	" copy reason line
@@ -511,7 +520,7 @@ function! s:splitChgBlock(startline, endline)
 	call append(l:midline, l:endtext)
 	" modify keyword line
 	let l:linetext  = getline(a:startline + 1)
-	let l:linetext  = substitute(l:linetext, '\CCHG\[\d*\]\[\d*\]_\[\d*\]\[\d*\]', 'DEL[][]', '')
+	let l:linetext  = substitute(l:linetext, '\CCHG\[\d*\]_\[\d*\] -> \[\d*\]_\[\d*\]', 'DEL[]_[]', '')
 	call setline(a:startline+1, l:linetext)
 	return l:midline
 endfunction
@@ -659,9 +668,11 @@ function! s:denyDelBlock(blockline1, blockline2, appline1, appline2)
 		"deny region begins at the beginning of the block
 		if a:appline2 >= a:blockline2 - 2
 			"deny region ends at the ending of the block
+			call s:decodeDeleteBlock(a:blockline1, a:blockline2)
 			silent! exe "normal ".(a:blockline2 - 1)."G2dd"
 			silent! exe "normal ".a:blockline1."G".(s:tag_allowr + 3)."dd"
 		else
+			call s:decodeDeleteBlock(a:blockline1, a:appline2)
 			let l:applines = a:appline2 - (a:blockline1 + 3 + s:tag_allowr)
 			if l:applines > 0
 				silent! exe "normal ".a:blockline1."G".(s:tag_allowr + 3)."dd".l:applines."jp"
@@ -672,11 +683,13 @@ function! s:denyDelBlock(blockline1, blockline2, appline1, appline2)
 	else
 		if a:appline2 >= a:blockline2 - 2
 			"deny region ends at the ending of the block
+			call s:decodeDeleteBlock(a:appline1, a:blockline2)
 			let l:applines = a:blockline2 - 2 - a:appline1
 			if l:applines >= 0
 				silent! exe "normal ".(a:blockline2-1)."G2dd".(l:applines+1)."kP"
 			endif
 		else
+			call s:decodeDeleteBlock(a:appline1, a:appline2)
 			silent! exe "normal ".a:blockline1."G".(s:tag_allowr + 3)."Y".a:appline2."Gp"
 			silent! exe "normal ".(a:blockline2 + 3)."G2Y".a:appline1."GP"
 		endif
@@ -707,5 +720,28 @@ function! s:denyChgBlock(blockline1, blockline2, appline1, appline2)
 	else
 		"deny region locates before #else
 		call s:denyDelBlock(a:blockline1, l:midline + 1, a:appline1, a:appline2)
+	endif
+endfunction
+function! s:encodeDeleteBlock(line1, line2)
+	if s:rm_prefix != ''
+		let l:curline = a:line1
+		while l:curline <= a:line2
+			let l:text = getline(l:curline)
+			call setline(l:curline, s:rm_prefix . l:text)
+			let l:curline = l:curline + 1
+		endwhile
+	endif
+endfunction
+function! s:decodeDeleteBlock(line1, line2)
+	if s:rm_prefix != ''
+		let l:curline = a:line1
+		let l:prelen  = strlen(s:rm_prefix)
+		while l:curline <= a:line2
+			let l:text = getline(l:curline)
+			if stridx(l:text, s:rm_prefix) == 0
+				call setline(l:curline, strpart(l:text, l:prelen))
+			endif
+			let l:curline = l:curline + 1
+		endwhile
 	endif
 endfunction
