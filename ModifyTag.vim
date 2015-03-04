@@ -1,9 +1,15 @@
 " Name    : ModifyTag
 " Object  : add modify history for c/c++ source
 " Author  : thuleqaid@163.com
-" Date    : 2015/03/01
-" Version : v0.5
+" Date    : 2015/03/04
+" Version : v0.6
 " ChangeLog
+" v0.6 2015/03/04
+"   replace s:GenerateCommand() with s:SearchCurrentDirectory() to grep without leaving vim
+"   add s:CalculateModifiedLinesBatch() and s:CalculateModifiedLinesAndClose() to update line count based on grep's result
+"   use quickfix list to save grep result
+"   add option s:tag_vigrep
+"   fix bug for s:rmMultilineComment()
 " v0.5 2015/03/01
 "   modify terminal command
 "   swap position of author and date in the keyword line
@@ -19,8 +25,9 @@
 
 " Usage :
 " 1. use <Leader>ta/tc/td when coding
-" 2. use <Leader>tt to generate script and bash command
-" 3. open result.txt after run step2's command, use <Leader>ts to summarize the result
+" 2. use <Leader>tt to grep files in the current buffer's directory
+" 3. use <Leader>tb to batch update line count based on grep's result if needed
+" 4. use <Leader>ts to summarize the result
 " Manual Command :
 " 1. use <Leader>tu to update lines of modified code in the current file
 " 2. use <Leader>tm to count selected lines
@@ -50,6 +57,7 @@ let s:tag_timef  = "%Y/%m/%d"
 let s:tag_sep    = ','
 let s:ptn_escape = '/*[]()'
 let s:rm_prefix  = '' "prefix that will be added at the beginning of every deleted line
+let s:tag_vigrep = 1 "0: use find and grep program (for shell only), 1: use vim's internal grep (slow)
 " define command
 command! -n=0 -bar ModifyTagUpdateLines :call s:CalculateModifiedLines()
 command! -n=0 -rang=% -bar ModifyTagManualCount :<line1>,<line2>call s:CountLines()
@@ -57,9 +65,11 @@ command! -n=0 -rang -bar ModifyTagAddSource :call s:ModifyTag('add',<line1>,<lin
 command! -n=0 -rang -bar ModifyTagChgSource :call s:ModifyTag('chg',<line1>,<line2>)
 command! -n=0 -rang -bar ModifyTagDelSource :call s:ModifyTag('del',<line1>,<line2>)
 command! -n=0 -bar ModifyTagSumLines :call s:SumModifiedLines()
-command! -n=0 -bar ModifyTagTerminalCmd :call s:GenerateCommand()
+command! -n=0 -bar ModifyTagTerminalCmd :call s:SearchCurrentDirectory()
 command! -n=0 -rang -bar ModifyTagOKChanges :<line1>,<line2>call s:ApproveChanges()
 command! -n=0 -rang -bar ModifyTagNGChanges :<line1>,<line2>call s:DenyChanges()
+command! -n=0 -bar ModifyTagUpdateLinesBatch :call s:CalculateModifiedLinesBatch()
+command! -n=0 -bar ModifyTagUpdateLinesAndClose :call s:CalculateModifiedLinesAndClose()
 " key-binding
 nmap <Leader>ta :ModifyTagAddSource<CR>
 vmap <Leader>tc :ModifyTagChgSource<CR>
@@ -72,7 +82,42 @@ nmap <Leader>to :ModifyTagOKChanges<CR>
 vmap <Leader>to :ModifyTagOKChanges<CR>
 nmap <Leader>tn :ModifyTagNGChanges<CR>
 vmap <Leader>tn :ModifyTagNGChanges<CR>
+nmap <Leader>tb :ModifyTagUpdateLinesBatch<CR>
 
+function! s:CalculateModifiedLinesBatch()
+	"let l:keyword  = s:constructKeyword()
+	"let l:lastline = line('$')
+	"let l:i        = 1
+	"let l:filelist = []
+	"while l:i <= l:lastline
+		"let l:text = getline(l:i)
+		"if stridx(l:text, l:keyword) > 0
+			"call setpos('.', [0, l:i, 1, 0])
+			"let l:curfile = expand("<cfile>")
+			"if index(l:filelist, l:curfile) < 0
+				"call add(l:filelist, l:curfile)
+			"endif
+		"endif
+		"let l:i = l:i + 1
+	"endwhile
+	silent! exe "cclose"
+	let l:filelist = []
+	for l:qfitem in getqflist()
+		let l:curfile = bufname(l:qfitem.bufnr)
+		if index(l:filelist, l:curfile) < 0
+			call add(l:filelist, l:curfile)
+		endif
+	endfor
+	for l:curfile in l:filelist
+		silent! exe "edit +ModifyTagUpdateLinesAndClose ". l:curfile
+	endfor
+	call s:SearchCurrentDirectory()
+endfunction
+function! s:CalculateModifiedLinesAndClose()
+	call s:CalculateModifiedLines()
+	silent! exe "write"
+	silent! exe "bdelete"
+endfunction
 function! s:ApproveChanges() range
 	let l:pos = s:tellPos(a:firstline, a:lastline)
 	let l:i   = len(l:pos) - 5
@@ -111,18 +156,35 @@ function! s:DenyChanges() range
 		endif
 	endwhile
 endfunction
-function! s:GenerateCommand()
+function! s:SearchCurrentDirectory()
 	let l:keyword  = escape(s:constructKeyword(), s:ptn_escape)
-	let l:command  = ":silent! echo find . -iregex '.*\\.\\(c\\|cxx\\|cpp\\|h\\|hxx\\|hpp\\)' | xargs -i sh -c \"vim -s mtupdate.vim {};grep -Hn '" . l:keyword ."' {} >> result.txt\""
-	call append(line('$'), ':silent! echo Save this file as "mtupdate.vim"')
-	call append(line('$'), ':silent! echo Terminal Command')
-	call append(line('$'), l:command)
-	call append(line('$'), ':ModifyTagUpdateLines')
-	call append(line('$'), ':wq')
+	if s:tag_vigrep > 0
+		let l:command  = "vimgrep /" . l:keyword . "/j " . expand("%:p:h:gs?\\?/?") . '/**/*.{c,cxx,cpp,h,hxx,hpp}'
+		silent! exe l:command
+		silent! exe "cwindow"
+	else
+		let l:command  = "find " . expand("%:p:h:gs?\\?/?") . " -iregex '.*\\.\\(c\\|cxx\\|cpp\\|h\\|hxx\\|hpp\\)' | xargs grep -Hn '" . l:keyword . "'"
+		silent! exe "normal G"
+		let l:lastline = line("$")
+		silent! exe "read !sh -c \"" . l:command . "\""
+		let l:line1  = l:lastline
+		let l:line2  = line("$")
+		let l:qflist = []
+		while l:line1 < l:line2
+			let l:line1 = l:line1 + 1
+			let l:text  = getline(l:line1)
+			let l:pos1  = stridx(l:text, ':')
+			let l:pos2  = stridx(l:text, ':', l:pos1 + 1)
+			call add(l:qflist, {'filename':strpart(l:text,0, l:pos1), 'lnum':str2nr(strpart(l:text, l:pos1 + 1, l:pos2 - l:pos1 - 1)), 'col':1, 'text':strpart(l:text, l:pos2 + 1)})
+		endwhile
+		silent undo
+		call setqflist(l:qflist)
+		silent! exe "cwindow"
+	endif
 endfunction
 function! s:SumModifiedLines()
 	let l:keyword  = s:constructKeyword()
-	let l:lastline = line('$')
+	"let l:lastline = line('$')
 	let l:total1   = 0
 	let l:total2   = 0
 	let l:total3   = 0
@@ -131,10 +193,13 @@ function! s:SumModifiedLines()
 	let l:total6   = 0
 	let l:total7   = 0
 	let l:total8   = 0
-	let l:i        = 1
+	"let l:i        = 1
+	call append(line('$'), expand("%:p:h:gs?\\?/?"))
 	call append(line('$'), "File\tLineNo\tADD_Total\tADD_Code\tCHG_Total_Old\tCHG_Code_Old\tCHG_Total_New\tCHG_Code_New\tDEL_Total\tDEL_Code\tDate\tAuthor")
-	while l:i <= l:lastline
-		let l:text = getline(l:i)
+	"while l:i <= l:lastline
+		"let l:text = getline(l:i)
+	for l:item in getqflist()
+		let l:text = bufname(l:item.bufnr) . ':' . l:item.lnum . ':' . l:item.text
 		if stridx(l:text, l:keyword) > 0
 			let l:text = substitute(l:text, escape(s:cmt_start, s:ptn_escape), '', '')
 			let l:text = substitute(l:text, escape(s:cmt_end, s:ptn_escape), '', '')
@@ -160,8 +225,9 @@ function! s:SumModifiedLines()
 			let l:text = substitute(l:text, ':', '\t', 'g')
 			call append(line('$'), l:text)
 		endif
-		let l:i = l:i + 1
-	endwhile
+	endfor
+		"let l:i = l:i + 1
+	"endwhile
 	call append(line('$'), "Total\t\t" . l:total1 . "\t" . l:total2 . "\t" . l:total3 . "\t" . l:total4 . "\t" . l:total5 . "\t" . l:total6 . "\t" . l:total7 . "\t" . l:total8)
 endfunction
 function! s:CountLines() range
@@ -270,7 +336,7 @@ function! s:rmMultilineComment()
 	let v:errmsg = ''
 	silent! /\/\*
 	while v:errmsg == ''
-		silent! exe "normal v/\\*\\//e\<CR>d"
+		silent! exe "normal v/\\*\\//e+1\<CR>d"
 		if v:errmsg != ''
 			break
 		endif
