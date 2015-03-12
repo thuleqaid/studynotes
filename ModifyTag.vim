@@ -1,9 +1,14 @@
 " Name    : ModifyTag
 " Object  : add modify history for c/c++ source
 " Author  : thuleqaid@163.com
-" Date    : 2015/03/04
-" Version : v0.6
+" Date    : 2015/03/15
+" Version : v0.7
 " ChangeLog
+" v0.7 2015/03/15
+"   replace setpos with cursor
+"   replace get(list, idx) with list[idx]
+"   replace read() with system()
+"   replace s:rmMultilineComment() with s:rmComment()
 " v0.6 2015/03/04
 "   replace s:GenerateCommand() with s:SearchCurrentDirectory() to grep without leaving vim
 "   add s:CalculateModifiedLinesBatch() and s:CalculateModifiedLinesAndClose() to update line count based on grep's result
@@ -85,21 +90,6 @@ vmap <Leader>tn :ModifyTagNGChanges<CR>
 nmap <Leader>tb :ModifyTagUpdateLinesBatch<CR>
 
 function! s:CalculateModifiedLinesBatch()
-	"let l:keyword  = s:constructKeyword()
-	"let l:lastline = line('$')
-	"let l:i        = 1
-	"let l:filelist = []
-	"while l:i <= l:lastline
-		"let l:text = getline(l:i)
-		"if stridx(l:text, l:keyword) > 0
-			"call setpos('.', [0, l:i, 1, 0])
-			"let l:curfile = expand("<cfile>")
-			"if index(l:filelist, l:curfile) < 0
-				"call add(l:filelist, l:curfile)
-			"endif
-		"endif
-		"let l:i = l:i + 1
-	"endwhile
 	silent! exe "cclose"
 	let l:filelist = []
 	for l:qfitem in getqflist()
@@ -122,11 +112,11 @@ function! s:ApproveChanges() range
 	let l:pos = s:tellPos(a:firstline, a:lastline)
 	let l:i   = len(l:pos) - 5
 	while l:i >= 0
-		let l:type  = get(l:pos,l:i)
-		let l:line1 = get(l:pos,l:i+1)
-		let l:line2 = get(l:pos,l:i+2)
-		let l:line3 = get(l:pos,l:i+3)
-		let l:line4 = get(l:pos,l:i+4)
+		let l:type  = l:pos[l:i]
+		let l:line1 = l:pos[l:i+1]
+		let l:line2 = l:pos[l:i+2]
+		let l:line3 = l:pos[l:i+3]
+		let l:line4 = l:pos[l:i+4]
 		let l:i     = l:i - 5
 		if l:type == 'add'
 			call s:approveAddBlock(l:line1, l:line2, l:line3, l:line4)
@@ -141,11 +131,11 @@ function! s:DenyChanges() range
 	let l:pos = s:tellPos(a:firstline, a:lastline)
 	let l:i   = len(l:pos) - 5
 	while l:i >= 0
-		let l:type  = get(l:pos,l:i)
-		let l:line1 = get(l:pos,l:i+1)
-		let l:line2 = get(l:pos,l:i+2)
-		let l:line3 = get(l:pos,l:i+3)
-		let l:line4 = get(l:pos,l:i+4)
+		let l:type  = l:pos[l:i]
+		let l:line1 = l:pos[l:i+1]
+		let l:line2 = l:pos[l:i+2]
+		let l:line3 = l:pos[l:i+3]
+		let l:line4 = l:pos[l:i+4]
 		let l:i     = l:i - 5
 		if l:type == 'add'
 			call s:denyAddBlock(l:line1, l:line2, l:line3, l:line4)
@@ -164,27 +154,19 @@ function! s:SearchCurrentDirectory()
 		silent! exe "cwindow"
 	else
 		let l:command  = "find " . expand("%:p:h:gs?\\?/?") . " -iregex '.*\\.\\(c\\|cxx\\|cpp\\|h\\|hxx\\|hpp\\)' | xargs grep -Hn '" . l:keyword . "'"
-		silent! exe "normal G"
-		let l:lastline = line("$")
-		silent! exe "read !sh -c \"" . l:command . "\""
-		let l:line1  = l:lastline
-		let l:line2  = line("$")
 		let l:qflist = []
-		while l:line1 < l:line2
-			let l:line1 = l:line1 + 1
-			let l:text  = getline(l:line1)
+		let l:result = system(l:command)
+		for l:text in split(l:result,'\n')
 			let l:pos1  = stridx(l:text, ':')
 			let l:pos2  = stridx(l:text, ':', l:pos1 + 1)
 			call add(l:qflist, {'filename':strpart(l:text,0, l:pos1), 'lnum':str2nr(strpart(l:text, l:pos1 + 1, l:pos2 - l:pos1 - 1)), 'col':1, 'text':strpart(l:text, l:pos2 + 1)})
-		endwhile
-		silent undo
+		endfor
 		call setqflist(l:qflist)
 		silent! exe "cwindow"
 	endif
 endfunction
 function! s:SumModifiedLines()
 	let l:keyword  = s:constructKeyword()
-	"let l:lastline = line('$')
 	let l:total1   = 0
 	let l:total2   = 0
 	let l:total3   = 0
@@ -193,11 +175,8 @@ function! s:SumModifiedLines()
 	let l:total6   = 0
 	let l:total7   = 0
 	let l:total8   = 0
-	"let l:i        = 1
 	call append(line('$'), expand("%:p:h:gs?\\?/?"))
 	call append(line('$'), "File\tLineNo\tADD_Total\tADD_Code\tCHG_Total_Old\tCHG_Code_Old\tCHG_Total_New\tCHG_Code_New\tDEL_Total\tDEL_Code\tDate\tAuthor")
-	"while l:i <= l:lastline
-		"let l:text = getline(l:i)
 	for l:item in getqflist()
 		let l:text = bufname(l:item.bufnr) . ':' . l:item.lnum . ':' . l:item.text
 		if stridx(l:text, l:keyword) > 0
@@ -213,26 +192,24 @@ function! s:SumModifiedLines()
 			let l:pos1 = match(l:text, ':', 0, 2)
 			let l:pos2 = match(l:text, ':', l:pos1+1, 8)
 			let l:curlines = split(strpart(l:text, l:pos1+1, l:pos2-l:pos1), ':', 1)
-			let l:total1 = l:total1 + str2nr(get(l:curlines, 0))
-			let l:total2 = l:total2 + str2nr(get(l:curlines, 1))
-			let l:total3 = l:total3 + str2nr(get(l:curlines, 2))
-			let l:total4 = l:total4 + str2nr(get(l:curlines, 3))
-			let l:total5 = l:total5 + str2nr(get(l:curlines, 4))
-			let l:total6 = l:total6 + str2nr(get(l:curlines, 5))
-			let l:total7 = l:total7 + str2nr(get(l:curlines, 6))
-			let l:total8 = l:total8 + str2nr(get(l:curlines, 7))
+			let l:total1 = l:total1 + str2nr(l:curlines[0])
+			let l:total2 = l:total2 + str2nr(l:curlines[1])
+			let l:total3 = l:total3 + str2nr(l:curlines[2])
+			let l:total4 = l:total4 + str2nr(l:curlines[3])
+			let l:total5 = l:total5 + str2nr(l:curlines[4])
+			let l:total6 = l:total6 + str2nr(l:curlines[5])
+			let l:total7 = l:total7 + str2nr(l:curlines[6])
+			let l:total8 = l:total8 + str2nr(l:curlines[7])
 			" change ':' to '\t'
 			let l:text = substitute(l:text, ':', '\t', 'g')
 			call append(line('$'), l:text)
 		endif
 	endfor
-		"let l:i = l:i + 1
-	"endwhile
 	call append(line('$'), "Total\t\t" . l:total1 . "\t" . l:total2 . "\t" . l:total3 . "\t" . l:total4 . "\t" . l:total5 . "\t" . l:total6 . "\t" . l:total7 . "\t" . l:total8)
 endfunction
 function! s:CountLines() range
 	let l:cnt = s:countSourceLines(a:firstline, a:lastline)
-	call setpos('.', [0, a:lastline, 1, 0])
+	call cursor(a:lastline, 1)
 	echo l:cnt
 endfunction
 function! s:CalculateModifiedLines()
@@ -240,18 +217,18 @@ function! s:CalculateModifiedLines()
 	" modify source lines
 	let l:i = 0
 	while l:i < len(l:cntlist)
-		let l:type  = get(l:cntlist,l:i)
-		let l:line0 = get(l:cntlist,l:i+1)
-		let l:line1 = get(l:cntlist,l:i+2)
-		let l:line2 = get(l:cntlist,l:i+3)
+		let l:type  = l:cntlist[l:i]
+		let l:line0 = l:cntlist[l:i+1]
+		let l:line1 = l:cntlist[l:i+2]
+		let l:line2 = l:cntlist[l:i+3]
 		let l:i     = l:i + 4
 		if l:type == 'add'
 			let l:rep = 'ADD[' . l:line1 . ']_[' . l:line2 . ']'
 			let l:res = substitute(getline(l:line0), '\CADD\[\d*\]_\[\d*\]', l:rep, "")
 			call setline(l:line0, l:res)
 		elseif l:type == 'chg'
-			let l:line3 = get(l:cntlist,l:i)
-			let l:line4 = get(l:cntlist,l:i+1)
+			let l:line3 = l:cntlist[l:i]
+			let l:line4 = l:cntlist[l:i+1]
 			let l:i     = l:i + 2
 			let l:rep   = 'CHG[' . l:line1 . ']_[' . l:line2 . '] -> [' . l:line3 . ']_[' . l:line4 . ']'
 			let l:res = substitute(getline(l:line0), '\CCHG\[\d*\]_\[\d*\] -> \[\d*\]_\[\d*\]', l:rep, "")
@@ -270,9 +247,9 @@ function! s:countList()
 	" count source lines
 	let l:i = 0
 	while l:i < len(l:rangelist)
-		let l:type  = get(l:rangelist,l:i)
-		let l:line1 = get(l:rangelist,l:i+1)
-		let l:line2 = get(l:rangelist,l:i+2)
+		let l:type  = l:rangelist[l:i]
+		let l:line1 = l:rangelist[l:i+1]
+		let l:line2 = l:rangelist[l:i+2]
 		if l:type == 'add'
 			call add(l:cntlist, 'add')
 			call add(l:cntlist, l:line1+1)
@@ -281,7 +258,7 @@ function! s:countList()
 		elseif l:type == 'chg'
 			call add(l:cntlist, 'chg')
 			call add(l:cntlist, l:line1+1)
-			call setpos('.', [0, l:line1+2+s:tag_allowr, 1, 0])
+			call cursor(l:line1+2+s:tag_allowr, 1)
 			call searchpair('#if','#else','#endif')
 			let l:midline = line('.')
 			let l:cnt = s:countSourceLines(l:line1+3+s:tag_allowr,l:midline-1)
@@ -308,7 +285,7 @@ function! s:modifyList()
 	while l:lineno1 > 0
 		let l:keylinetext = getline(l:lineno1 + 1)
 		if stridx(l:keylinetext, l:keyline) > 0
-			call setpos('.', [0, l:lineno1, 1, 0])
+			call cursor(l:lineno1, 1)
 			let l:lineno2 = searchpair(l:startline, '', l:endline)
 			if l:lineno2 > l:lineno1
 				if stridx(l:keylinetext, 'ADD[') > 0
@@ -331,17 +308,39 @@ function! s:modifyList()
 	endwhile
 	return l:rangelist
 endfunction
-function! s:rmMultilineComment()
-	call setpos('.', [0, 1, 1, 0])
-	let v:errmsg = ''
-	silent! /\/\*
-	while v:errmsg == ''
-		silent! exe "normal v/\\*\\//e+1\<CR>d"
-		if v:errmsg != ''
+function! s:rmComment(keepempty)
+	" change multi-line comment into one-line comments
+	call cursor(1, 1)
+	let l:cmtstart = searchpos('/\*', 'cWe')
+	while l:cmtstart[0] > 0
+		let l:cmtstop = searchpos('\*/', 'We')
+		if l:cmtstop[0] > 0
+			if l:cmtstop[0] > l:cmtstart[0]
+				" multi-line comment
+				call setline(l:cmtstart[0], getline(l:cmtstart[0]) . '\t*/')
+				let l:i = l:cmtstart[0] + 1
+				while l:i < l:cmtstop[0]
+					call setline(l:i, '/*\t' . getline(l:i) . '\t*/')
+					let l:i = l:i + 1
+				endwhile
+				call setline(l:cmtstop[0], '/*\t' . getline(l:cmtstop[0]))
+			else
+				" one-line comment
+			endif
+		else
+			" cannot find the close comment
 			break
 		endif
-		silent! /\/\*
+		let l:cmtstart = searchpos('/\*', 'We')
 	endwhile
+	" delete comment /*...*/
+	silent! %s+/\*.*\*/++g
+	" delete comment //...
+	silent! %s+//.*$++g
+	if a:keepempty <= 0
+		" remove empty line
+		silent! g+^\s*$+d
+	endif
 endfunction
 function! s:countSourceLines(startlineno, endlineno)
 	silent! redir => dummy
@@ -356,13 +355,7 @@ function! s:countSourceLines(startlineno, endlineno)
 		silent! exe "normal gg"
 		silent! exe "normal ".(a:startlineno-1)."dd"
 	endif
-	" delete comment /*...*/
-	silent! %s+/\*.*\*/++g
-	" delete comment //...
-	silent! %s+//.*$++g
-	call s:rmMultilineComment()
-	" remove empty line
-	silent! g+^\s*$+d
+	call s:rmComment(0)
 	let l:count = line("$")
 	silent undo
 	redir END
@@ -540,11 +533,11 @@ function! s:ModifyTag(type, startlineno, endlineno)
 		let l:curlineno += 1
 	endif
 	call append(l:curlineno, s:constructEndLine())
-	call setpos('.', [0, l:poslineno, 0, 0])
+	call cursor(l:poslineno, 0)
 endfunction
 
 function! s:splitChgBlock(startline, endline)
-	call setpos('.', [0, a:startline + 2 + s:tag_allowr, 1, 0])
+	call cursor(a:startline + 2 + s:tag_allowr, 1)
 	call searchpair('#if','#else','#endif')
 	let l:endtext = getline(a:endline)
 	let l:midline = line('.')
@@ -598,9 +591,9 @@ function! s:tellPos(startlineno, endlineno)
 	let l:grouplist = []
 	let l:i         = 0
 	while l:i < len(l:rangelist)
-		let l:type  = get(l:rangelist,l:i)
-		let l:line1 = get(l:rangelist,l:i+1)
-		let l:line2 = get(l:rangelist,l:i+2)
+		let l:type  = l:rangelist[l:i]
+		let l:line1 = l:rangelist[l:i+1]
+		let l:line2 = l:rangelist[l:i+2]
 		let l:i = l:i + 3
 		if l:startline < l:line1
 			let l:startline = l:line1
@@ -623,7 +616,7 @@ function! s:tellPos(startlineno, endlineno)
 			endif
 		endif
 	endwhile
-	call setpos('.', l:oldpos)
+	call cursor(l:oldpos)
 	return l:grouplist
 endfunction
 function! s:approveAddBlock(blockline1, blockline2, appline1, appline2)
