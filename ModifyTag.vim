@@ -1,9 +1,13 @@
 " Name    : ModifyTag
 " Object  : add modify history for c/c++ source
 " Author  : thuleqaid@163.com
-" Date    : 2015/03/15
-" Version : v0.7
+" Date    : 2015/03/19
+" Version : v0.8
 " ChangeLog
+" v0.8 2015/03/19
+"   add s:rmInvalidCode()
+"   add s:cleanCode()
+"   add s:findStaticCheck()
 " v0.7 2015/03/15
 "   replace setpos with cursor
 "   replace get(list, idx) with list[idx]
@@ -308,7 +312,7 @@ function! s:modifyList()
 	endwhile
 	return l:rangelist
 endfunction
-function! s:rmComment(keepempty)
+function! s:rmComment()
 	" change multi-line comment into one-line comments
 	call cursor(1, 1)
 	let l:cmtstart = searchpos('/\*', 'cWe')
@@ -337,10 +341,8 @@ function! s:rmComment(keepempty)
 	silent! %s+/\*.*\*/++g
 	" delete comment //...
 	silent! %s+//.*$++g
-	if a:keepempty <= 0
-		" remove empty line
-		silent! g+^\s*$+d
-	endif
+	" delete tailing space
+	silent! %s+\s\+$++g
 endfunction
 function! s:countSourceLines(startlineno, endlineno)
 	silent! redir => dummy
@@ -355,7 +357,9 @@ function! s:countSourceLines(startlineno, endlineno)
 		silent! exe "normal gg"
 		silent! exe "normal ".(a:startlineno-1)."dd"
 	endif
-	call s:rmComment(0)
+	call s:rmComment()
+	" remove empty line
+	silent! g+^\s*$+d
 	let l:count = line("$")
 	silent undo
 	redir END
@@ -804,3 +808,45 @@ function! s:decodeDeleteBlock(line1, line2)
 		endwhile
 	endif
 endfunction
+function! s:rmInvalidCode()
+	silent! exe "normal gg"
+	let l:startline = search('^\s*#\s*if\s\+0\>')
+	while l:startline > 0
+		let l:midline = searchpair('^\s*#\s*if','^\s*#\s*else','^\s*#\s*endif')
+		if getline(l:midline) =~ "endif"
+			let l:stopline = l:midline
+		else
+			let l:stopline = searchpair('^\s*#\s*if','^\s*#\s*else','^\s*#\s*endif')
+		endif
+		silent! exe l:startline . ',' . l:midline . 's/.*//'
+		silent! exe l:stopline . 's/.*//'
+		let l:startline = search('^\s*#\s*if\s\+0\>')
+	endwhile
+	let l:startline = search('^\s*#\s*if\s\+1\>')
+	while l:startline > 0
+		let l:midline = searchpair('^\s*#\s*if','^\s*#\s*else','^\s*#\s*endif')
+		let l:stopline = searchpair('^\s*#\s*if','^\s*#\s*else','^\s*#\s*endif')
+		silent! exe l:startline . 's/.*//'
+		silent! exe l:midline . ',' . l:stopline . 's/.*//'
+		let l:startline = search('^\s*#\s*if\s\+1\>')
+	endwhile
+endfunction
+function! s:cleanCode(keepempty)
+	call s:rmInvalidCode()
+	call s:rmComment()
+	if a:keepempty <= 0
+		" remove empty line
+		silent! g+^\s*$+d
+	endif
+endfunction
+function! s:findStaticCheck(type)
+	" type 0:loop  1:divide
+	call s:cleanCode(1)
+	if a:type == 0
+		silent! exe 'vimgrep /\<for\>\|\<while\>/j ' . expand('%:p')
+	elseif a:type == 1
+		silent! exe 'vimgrep /\/\|%/j ' . expand('%:p')
+	endif
+	silent! undo
+endfunction
+
