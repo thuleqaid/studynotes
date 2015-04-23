@@ -3,6 +3,7 @@
 " mkdir temp
 " git clone http://github.com/gmarik/vundle.git bundle/vundle
 set nocompatible
+colorscheme darkblue
 
 set enc=utf-8
 set fileencodings=utf-8,cp936,sjis
@@ -16,11 +17,14 @@ set bk
 set bdir=~/.vim/temp
 " swap
 set dir=~/.vim/temp
-set lines=40 columns=110
+"set lines=40 columns=110
 set guioptions-=T
 set list
 set listchars=tab:>-,trail:-
 set number
+" syntax color
+syntax enable
+syntax on
 " hightlight trailing spaces
 highlight WhitespaceEOL ctermbg=red guibg=red
 match WhitespaceEOL /\s\+$/
@@ -40,8 +44,16 @@ set ai
 set si
 set nowrap
 
+"if has("autocmd")
+    "autocmd FileType python,javascript,php set expandtab
+"endif
 map <F5> "+y
 map <F6> "+p
+
+set rtp+=~/.vim/vimfiles/
+if has("autocmd")
+    autocmd BufRead * ModifyTagAutoExpandTab
+endif
 
 filetype off                  " required!
 set rtp+=~/.vim/bundle/vundle/
@@ -69,12 +81,13 @@ if has("persistent_undo")
     set undofile
 endif
 
-"MultipleSearch2
-Bundle 'MultipleSearch2.vim'
-let g:miniBufExplMapWindowNavVim=1
+"Multiple Highlight
+Bundle 'Mark--Karkat'
+let g:mwAutoSaveMarks = 0
 
 " MiniBufExplorer
 Bundle 'minibufexpl.vim'
+let g:miniBufExplMapWindowNavVim=1
 set hidden
 
 "NERDCommenter
@@ -87,6 +100,58 @@ Bundle 'The-NERD-tree'
 Bundle 'Tagbar'
 "let g:tagbar_left = 1
 
+"JavaScript-syntax
+Bundle 'JavaScript-syntax'
+
+"markdown
+Bundle 'godlygeek/tabular'
+Bundle 'plasticboy/vim-markdown'
+let g:vim_markdown_folding_disabled=1
+let g:vim_markdown_initial_foldlevel=1
+
+"Git
+""Bundle 'fugitive.vim'
+Bundle 'motemen/git-vim'
+"" show branch name in the status line
+"set laststatus=2
+"set statusline=%{GitBranch()}
+Bundle 'airblade/vim-gitgutter'
+
+"Syntax check
+Bundle 'Syntastic'
+""C
+let g:syntastic_c_check_header=1
+let g:syntastic_c_auto_refresh_includes=1
+let g:syntastic_c_errorformat='%f:%l:%c:%trror: %m'
+let g:syntastic_c_compiler='gcc'
+""C++
+let g:syntastic_cpp_check_header=1
+let g:syntastic_cpp_auto_refresh_includes=1
+let g:syntastic_cpp_errorformat='%f:%l:%c:%trror: %m'
+let g:syntastic_cpp_compiler_options='-std=c++11'
+let g:syntastic_cpp_include_dirs= ['usr/local/include' ]
+let g:syntastic_cpp_compiler='g++'
+""python
+
+"EasyMotion
+Bundle 'EasyMotion'
+
+"Status bar
+Bundle 'bling/vim-airline'
+
+"multiple cursors
+Bundle 'terryma/vim-multiple-cursors'
+
+"AutoComplPop
+Bundle 'AutoComplPop'
+
+"OmniCppComplete
+Bundle 'OmniCppComplete'
+set tags+=~/work/cpp47.tag
+set tags+=~/work/boost.tag
+
+hi PmenuSel ctermbg=green
+hi PmenuSel guibg=green
 
 nmap <Leader>wl :NERDTreeToggle<CR>
 nmap <Leader>wr :TagbarToggle<CR>
@@ -154,14 +219,14 @@ function! s:genTag(name)
     "exec '!cscope -Rbkq'
     exec '!cscope -Rbc'
     ""set tags
-    exec ':set tags=' . dir  . 'tags'
+    exec ':set tags+=' . dir  . 'tags'
     exec ':cs add ' . dir . 'cscope.out'
 endfunction
 function! s:setTag(name)
     let dir=s:inputDir(a:name)
     "exec ':chdir '. dir
     if filereadable(dir.'tags')
-        exec ':set tags=' . dir  . 'tags'
+        exec ':set tags+=' . dir  . 'tags'
     else
         echo 'Not found: '. dir . 'tags'
     endif

@@ -1,9 +1,18 @@
 " Name    : ModifyTag
 " Object  : add modify history for c/c++ source
 " Author  : thuleqaid@163.com
-" Date    : 2015/03/19
-" Version : v0.8
+" Date    : 2015/03/23
+" Version : v0.9
 " ChangeLog
+" v0.9 2015/04/23
+"   add s:AutoExpandTab()
+"   add s:FilterStaticCheck()
+"   add s:StaticCheck()
+"   add s:ListStaticCheck()
+"   add s:splitKeywordLine()
+"   add s:fileList()
+"   modify s:findStaticCheck()
+"   modify s:rmComment()
 " v0.8 2015/03/19
 "   add s:rmInvalidCode()
 "   add s:cleanCode()
@@ -43,6 +52,15 @@
 " CodeReview Command :
 " 1. use <Leader>to to approve selected lines
 " 2. use <Leader>tn to approve selected lines
+" Static Check command
+" 1. use <Leader>tt to list all changes in the current directory
+" 2. use <Leader>tl/tl to list loop/divide statements in the modified files
+" 3. use <Leader>tf to separate loop/divide in the base or in the modifications
+" <Leader>tL/tZ will list loop/divide in all the files
+" Auto Switch expandtab
+" if has("autocmd")
+"     autocmd BufRead * ModifyTagAutoExpandTab
+" endif
 
 " Paramater I
 " this part should be unique for every project
@@ -79,6 +97,10 @@ command! -n=0 -rang -bar ModifyTagOKChanges :<line1>,<line2>call s:ApproveChange
 command! -n=0 -rang -bar ModifyTagNGChanges :<line1>,<line2>call s:DenyChanges()
 command! -n=0 -bar ModifyTagUpdateLinesBatch :call s:CalculateModifiedLinesBatch()
 command! -n=0 -bar ModifyTagUpdateLinesAndClose :call s:CalculateModifiedLinesAndClose()
+command! -n=+ -bar ModifyTagStaticCheck :call s:StaticCheck(<f-args>)
+command! -n=+ -bar ModifyTagListStaticCheck :call s:ListStaticCheck(<f-args>)
+command! -n=0 -bar ModifyTagFilterStaticCheck :call s:FilterStaticCheck()
+command! -n=0 -bar ModifyTagAutoExpandTab :call s:AutoExpandTab()
 " key-binding
 nmap <Leader>ta :ModifyTagAddSource<CR>
 vmap <Leader>tc :ModifyTagChgSource<CR>
@@ -92,16 +114,89 @@ vmap <Leader>to :ModifyTagOKChanges<CR>
 nmap <Leader>tn :ModifyTagNGChanges<CR>
 vmap <Leader>tn :ModifyTagNGChanges<CR>
 nmap <Leader>tb :ModifyTagUpdateLinesBatch<CR>
+nmap <Leader>tl :ModifyTagStaticCheck 0 1<CR>
+nmap <Leader>tz :ModifyTagStaticCheck 0 0<CR>
+nmap <Leader>tL :ModifyTagStaticCheck 1 1<CR>
+nmap <Leader>tZ :ModifyTagStaticCheck 1 0<CR>
+nmap <Leader>tf :ModifyTagFilterStaticCheck<CR>
 
-function! s:CalculateModifiedLinesBatch()
-	silent! exe "cclose"
-	let l:filelist = []
-	for l:qfitem in getqflist()
-		let l:curfile = bufname(l:qfitem.bufnr)
-		if index(l:filelist, l:curfile) < 0
-			call add(l:filelist, l:curfile)
+function! s:AutoExpandTab()
+	let l:leadingTab = search("^\t","n")
+	let l:leadingSpace = search("^ \\{2,\\}","n")
+	if (l:leadingTab > 0) && (l:leadingSpace <= 0)
+		silent! exe "setlocal noexpandtab"
+	elseif (l:leadingTab <= 0) && (l:leadingSpace > 0)
+		silent! exe "setlocal expandtab"
+	endif
+endfunction
+function! s:FilterStaticCheck()
+	let l:linerange = {}
+	for l:item in getqflist()
+		let l:curlines = s:splitKeywordLine(l:item.text)
+		if len(l:curlines) > 0
+			let l:fname = bufname(l:item.bufnr)
+			if has_key(l:linerange, l:fname) < 1
+				call extend(l:linerange, {l:fname : []})
+			endif
+			let l:total1 = str2nr(l:curlines[0])
+			let l:total2 = str2nr(l:curlines[2])
+			let l:total3 = str2nr(l:curlines[4])
+			let l:total4 = str2nr(l:curlines[6])
+			if l:total1 > 0
+				let l:pos = l:total1 + 2 + s:tag_allowr + s:tag_mode * 2
+			elseif l:total2 > 0
+				let l:pos = l:total2 + l:total3 + 5 + s:tag_allowr
+			elseif l:total4 > 0
+				let l:pos = l:total4 + 4 + s:tag_allowr
+			endif
+			call extend(l:linerange[l:fname], [l:item.lnum - 1, l:item.lnum - 1 + l:pos])
 		endif
 	endfor
+	echo l:linerange
+	let l:pos = 1
+	while l:pos <= line('$')
+		let l:linetext = getline(l:pos)
+		let l:parts = split(l:linetext, "\t")
+		if len(l:parts) > 2
+			if has_key(l:linerange, l:parts[0]) < 1
+				call setline(l:pos, "-1\t" . l:linetext)
+			else
+				let l:idx = 0
+				let l:lineno = str2nr(l:parts[1])
+				while l:idx < len(l:linerange[l:parts[0]])
+					if (l:lineno >= l:linerange[l:parts[0]][l:idx]) && (l:lineno <= l:linerange[l:parts[0]][l:idx + 1])
+						break
+					endif
+					let l:idx = l:idx + 2
+				endwhile
+				if l:idx < len(l:linerange[l:parts[0]])
+					call setline(l:pos, "1\t" . l:linetext)
+				else
+					call setline(l:pos, "0\t" . l:linetext)
+				endif
+			endif
+		endif
+		let l:pos = l:pos + 1
+	endwhile
+endfunction
+function! s:StaticCheck(allfiles, loopcheck)
+	if a:allfiles == 1
+		let l:filelist = s:fileList(0)
+	else
+		let l:filelist = s:fileList(1)
+	endif
+	if a:loopcheck == 1
+		let l:cmd = "edit +ModifyTagListStaticCheck\\ 1\\ " . bufnr("") . " "
+	else
+		let l:cmd = "edit +ModifyTagListStaticCheck\\ 0\\ " . bufnr("") . " "
+	endif
+	for l:curfile in l:filelist
+		silent! exe  l:cmd . l:curfile
+	endfor
+endfunction
+function! s:CalculateModifiedLinesBatch()
+	silent! exe "cclose"
+	let l:filelist = s:fileList(1)
 	for l:curfile in l:filelist
 		silent! exe "edit +ModifyTagUpdateLinesAndClose ". l:curfile
 	endfor
@@ -163,14 +258,13 @@ function! s:SearchCurrentDirectory()
 		for l:text in split(l:result,'\n')
 			let l:pos1  = stridx(l:text, ':')
 			let l:pos2  = stridx(l:text, ':', l:pos1 + 1)
-			call add(l:qflist, {'filename':strpart(l:text,0, l:pos1), 'lnum':str2nr(strpart(l:text, l:pos1 + 1, l:pos2 - l:pos1 - 1)), 'col':1, 'text':strpart(l:text, l:pos2 + 1)})
+			call add(l:qflist, {'filename':strpart(l:text, 0, l:pos1), 'lnum':str2nr(strpart(l:text, l:pos1 + 1, l:pos2 - l:pos1 - 1)), 'col':1, 'text':strpart(l:text, l:pos2 + 1)})
 		endfor
 		call setqflist(l:qflist)
 		silent! exe "cwindow"
 	endif
 endfunction
 function! s:SumModifiedLines()
-	let l:keyword  = s:constructKeyword()
 	let l:total1   = 0
 	let l:total2   = 0
 	let l:total3   = 0
@@ -182,20 +276,9 @@ function! s:SumModifiedLines()
 	call append(line('$'), expand("%:p:h:gs?\\?/?"))
 	call append(line('$'), "File\tLineNo\tADD_Total\tADD_Code\tCHG_Total_Old\tCHG_Code_Old\tCHG_Total_New\tCHG_Code_New\tDEL_Total\tDEL_Code\tDate\tAuthor")
 	for l:item in getqflist()
-		let l:text = bufname(l:item.bufnr) . ':' . l:item.lnum . ':' . l:item.text
-		if stridx(l:text, l:keyword) > 0
-			let l:text = substitute(l:text, escape(s:cmt_start, s:ptn_escape), '', '')
-			let l:text = substitute(l:text, escape(s:cmt_end, s:ptn_escape), '', '')
-			let l:text = substitute(l:text, escape(s:tag_sep . l:keyword . s:tag_sep, s:ptn_escape), ':', '')
-			" add ':' between author and date
-			let l:text = substitute(l:text, escape(s:tag_sep, s:ptn_escape), ':', '')
-			let l:text = substitute(l:text, '\CADD\[\(\d*\)\]_\[\(\d*\)\]', '\1:\2::::::', '')
-			let l:text = substitute(l:text, '\CCHG\[\(\d*\)\]_\[\(\d*\)\] -> \[\(\d*\)\]_\[\(\d*\)\]', '::\1:\2:\3:\4::', '')
-			let l:text = substitute(l:text, '\CDEL\[\(\d*\)\]_\[\(\d*\)\]', '::::::\1:\2', '')
-			" sum lines
-			let l:pos1 = match(l:text, ':', 0, 2)
-			let l:pos2 = match(l:text, ':', l:pos1+1, 8)
-			let l:curlines = split(strpart(l:text, l:pos1+1, l:pos2-l:pos1), ':', 1)
+		let l:curlines = s:splitKeywordLine(l:item.text)
+		if len(l:curlines) > 0
+			let l:text = bufname(l:item.bufnr) . "\t" . l:item.lnum . "\t" . join(l:curlines, "\t")
 			let l:total1 = l:total1 + str2nr(l:curlines[0])
 			let l:total2 = l:total2 + str2nr(l:curlines[1])
 			let l:total3 = l:total3 + str2nr(l:curlines[2])
@@ -204,8 +287,6 @@ function! s:SumModifiedLines()
 			let l:total6 = l:total6 + str2nr(l:curlines[5])
 			let l:total7 = l:total7 + str2nr(l:curlines[6])
 			let l:total8 = l:total8 + str2nr(l:curlines[7])
-			" change ':' to '\t'
-			let l:text = substitute(l:text, ':', '\t', 'g')
 			call append(line('$'), l:text)
 		endif
 	endfor
@@ -313,6 +394,8 @@ function! s:modifyList()
 	return l:rangelist
 endfunction
 function! s:rmComment()
+	" delete comment //...
+	silent! %s+//.*$++g
 	" change multi-line comment into one-line comments
 	call cursor(1, 1)
 	let l:cmtstart = searchpos('/\*', 'cWe')
@@ -339,8 +422,6 @@ function! s:rmComment()
 	endwhile
 	" delete comment /*...*/
 	silent! %s+/\*.*\*/++g
-	" delete comment //...
-	silent! %s+//.*$++g
 	" delete tailing space
 	silent! %s+\s\+$++g
 endfunction
@@ -839,14 +920,80 @@ function! s:cleanCode(keepempty)
 		silent! g+^\s*$+d
 	endif
 endfunction
-function! s:findStaticCheck(type)
-	" type 0:loop  1:divide
-	call s:cleanCode(1)
-	if a:type == 0
-		silent! exe 'vimgrep /\<for\>\|\<while\>/j ' . expand('%:p')
-	elseif a:type == 1
-		silent! exe 'vimgrep /\/\|%/j ' . expand('%:p')
+function! s:splitKeywordLine(linetext)
+	let l:keyword  = s:constructKeyword()
+	let l:text = a:linetext
+	if stridx(l:text, l:keyword) > 0
+		let l:text = substitute(l:text, escape(s:cmt_start, s:ptn_escape), '', '')
+		let l:text = substitute(l:text, escape(s:cmt_end, s:ptn_escape), '', '')
+		let l:text = substitute(l:text, escape(s:tag_sep . l:keyword . s:tag_sep, s:ptn_escape), ':', '')
+		" add ':' between author and date
+		let l:text = substitute(l:text, escape(s:tag_sep, s:ptn_escape), ':', '')
+		let l:text = substitute(l:text, '\CADD\[\(\d*\)\]_\[\(\d*\)\]', '\1:\2::::::', '')
+		let l:text = substitute(l:text, '\CCHG\[\(\d*\)\]_\[\(\d*\)\] -> \[\(\d*\)\]_\[\(\d*\)\]', '::\1:\2:\3:\4::', '')
+		let l:text = substitute(l:text, '\CDEL\[\(\d*\)\]_\[\(\d*\)\]', '::::::\1:\2', '')
+		" sum lines
+		let l:pos = match(l:text, ':', 0, 9)
+		let l:curlines = split(strpart(l:text, 0, l:pos), ':', 1)
+		call add(l:curlines, strpart(l:text, l:pos+1))
+		return l:curlines
+	else
+		return []
 	endif
+endfunction
+function! s:fileList(qflist)
+	if a:qflist == 1
+		let l:filelist = []
+		for l:qfitem in getqflist()
+			let l:curfile = bufname(l:qfitem.bufnr)
+			if index(l:filelist, l:curfile) < 0
+				call add(l:filelist, l:curfile)
+			endif
+		endfor
+	else
+		let l:filelist = split(glob(expand("%:p:h:gs?\\?/?") . "/**/*.{c,cxx,cpp,h,hxx,hp}"),"\n")
+	endif
+	return l:filelist
+endfunction
+function! s:findStaticCheck(type)
+	" type 1:loop  0:divide zero
+	call s:cleanCode(1)
+	call cursor(1, 1)
+	let l:lines = []
+	if a:type == 1
+		let l:pattern = "\\C\\<for\\>\\|\\<while\\>"
+	elseif a:type == 0
+		let l:pattern = "/\\|%"
+	endif
+	while search(l:pattern, "eW") > 0
+		let l:curno = line('.')
+		if index(l:lines, l:curno) < 0
+			call add(l:lines, l:curno)
+		endif
+	endwhile
 	silent! undo
+	return l:lines
+endfunction
+function! s:ListStaticCheck(loopcheck, outnr)
+	let l:curfile = expand("%:p")
+	if a:loopcheck == 1
+		let l:linenos = s:findStaticCheck(1)
+	else
+		let l:linenos = s:findStaticCheck(0)
+	endif
+	let l:outlines = []
+	for l:curno in l:linenos
+		let l:linetext = substitute(getline(l:curno), "\t", " ", "g")
+		call add(l:outlines, l:curno . "\t" . substitute(l:linetext, "^\\s\\+", "", ""))
+	endfor
+	silent! exe "bdelete"
+	silent! exe "buf " . a:outnr
+	if s:tag_vigrep > 0
+		let l:basepath = expand("%:p:h")
+		let l:curfile = strpart(l:curfile, len(l:basepath)+1)
+	endif
+	for l:linetext in l:outlines
+		call append('$', l:curfile . "\t" . l:linetext)
+	endfor
 endfunction
 
