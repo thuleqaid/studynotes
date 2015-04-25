@@ -51,6 +51,21 @@ map <F5> "+y
 map <F6> "+p
 
 set rtp+=~/.vim/vimfiles/
+" ModifyTag.vim
+"" project info
+let g:mt_tag_key1 = 'Key Level 1'
+let g:mt_tag_key2 = 'Key Level 2'
+let g:mt_tag_key3 = 'Key Level 3'
+let g:mt_tag_allowr = 1
+let g:mt_tag_reason = 'default modify reason'
+"" developer info
+let g:mt_tag_user   = 'thuleqaid'
+let g:mt_tag_vigrep = 1
+"" format setting
+let g:mt_tag_timef  = "%Y/%m/%d"
+let g:mt_tag_mode   = 1
+let g:mt_tag_co     = ''
+"" enable auto-expandtab
 if has("autocmd")
     autocmd BufRead * ModifyTagAutoExpandTab
 endif
@@ -116,6 +131,7 @@ Bundle 'motemen/git-vim'
 "set laststatus=2
 "set statusline=%{GitBranch()}
 Bundle 'airblade/vim-gitgutter'
+let g:gitgutter_max_signs = 9999
 
 "Syntax check
 Bundle 'Syntastic'

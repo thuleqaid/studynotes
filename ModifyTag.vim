@@ -1,9 +1,11 @@
 " Name    : ModifyTag
 " Object  : add modify history for c/c++ source
 " Author  : thuleqaid@163.com
-" Date    : 2015/03/23
-" Version : v0.9
+" Date    : 2015/04/23
+" Version : v1.0
 " ChangeLog
+" v1.0 2015/04/23
+"   make settings available to .vimrc
 " v0.9 2015/04/23
 "   add s:AutoExpandTab()
 "   add s:FilterStaticCheck()
@@ -26,13 +28,13 @@
 "   replace s:GenerateCommand() with s:SearchCurrentDirectory() to grep without leaving vim
 "   add s:CalculateModifiedLinesBatch() and s:CalculateModifiedLinesAndClose() to update line count based on grep's result
 "   use quickfix list to save grep result
-"   add option s:tag_vigrep
+"   add option g:mt_tag_vigrep
 "   fix bug for s:rmMultilineComment()
 " v0.5 2015/03/01
 "   modify terminal command
 "   swap position of author and date in the keyword line
 "   adjust line count format in the keyword line
-"   add option s:rm_prefix
+"   add option g:mt_rm_prefix
 " v0.4 2015/02/17
 "   add s:DenyChanges()
 " v0.3 2015/02/17
@@ -64,27 +66,27 @@
 
 " Paramater I
 " this part should be unique for every project
-let s:tag_key1   = 'abcd' "must
-let s:tag_key2   = 'hijk' "optional
-let s:tag_key3   = 'wxyz' "optional
-let s:tag_reason = 'xxxyyyzzz' "default modify-reason
-let s:tag_co     = '' "compile option, valid only if s:tag_mode == 1
-let s:tag_allowr = 1 "0: without reason line, 1: with reason line
+let g:mt_tag_key1 = get(g:, 'mt_tag_key1', 'tag_key_1') "must
+let g:mt_tag_key2 = get(g:, 'mt_tag_key2', '') "optional
+let g:mt_tag_key3 = get(g:, 'mt_tag_key3', '') "optional
+let g:mt_tag_allowr = get(g:, 'mt_tag_allowr', 1) "0: without reason line, 1: with reason line
+let g:mt_tag_reason = get(g:, 'mt_tag_reason', 'default modify reason') "default modify-reason
 " Paramater II
 " this part should be unique for every people
-let s:tag_user   = 'anonymous'
+let g:mt_tag_user   = get(g:, 'mt_tag_user', 'anonymous')
+let g:mt_tag_vigrep = get(g:, 'mt_tag_vigrep', 1) "0: use find and grep program (for shell only), 1: use vim's internal grep (slow)
 " Paramater III
 " this part should be same for every people
-let s:tag_start  = '/*$$$$$$$$$$$$$$$$$CorrectStart$$$$$$$$$$$$$$$$$$*/'
-let s:tag_end    = '/*$$$$$$$$$$$$$$$$$$CorrectEnd$$$$$$$$$$$$$$$$$$$*/'
-let s:cmt_start  = '/*$$$ '
-let s:cmt_end    = '*/'
-let s:tag_mode   = 0  "0: [#if] for chg and del, 1:[#if] for add, chg and del
-let s:tag_timef  = "%Y/%m/%d"
-let s:tag_sep    = ','
+let g:mt_tag_timef  = get(g:, 'mt_tag_timef', "%Y/%m/%d")
+let g:mt_tag_mode   = get(g:, 'mt_tag_mode', 0)  "0: [#if] for chg and del, 1:[#if] for add, chg and del
+let g:mt_tag_co     = get(g:, 'mt_tag_co' ,'')   "compile option, valid only if g:mt_tag_mode == 1
+let g:mt_tag_start  = get(g:, 'mt_tag_start', '/*$$$$$$$$$$$$$$$$$CorrectStart$$$$$$$$$$$$$$$$$$*/')
+let g:mt_tag_end    = get(g:, 'mt_tag_end', '/*$$$$$$$$$$$$$$$$$$CorrectEnd$$$$$$$$$$$$$$$$$$$*/')
+let g:mt_tag_sep    = get(g:, 'mt_tag_sep', ',')
+let g:mt_cmt_start  = get(g:, 'mt_cmt_start', '/*$$$ ')
+let g:mt_cmt_end    = get(g:, 'mt_cmt_end', '*/')
+let g:mt_rm_prefix  = get(g:, 'mt_rm_prefix', '') "prefix that will be added at the beginning of every deleted line
 let s:ptn_escape = '/*[]()'
-let s:rm_prefix  = '' "prefix that will be added at the beginning of every deleted line
-let s:tag_vigrep = 1 "0: use find and grep program (for shell only), 1: use vim's internal grep (slow)
 " define command
 command! -n=0 -bar ModifyTagUpdateLines :call s:CalculateModifiedLines()
 command! -n=0 -rang=% -bar ModifyTagManualCount :<line1>,<line2>call s:CountLines()
@@ -143,11 +145,11 @@ function! s:FilterStaticCheck()
 			let l:total3 = str2nr(l:curlines[4])
 			let l:total4 = str2nr(l:curlines[6])
 			if l:total1 > 0
-				let l:pos = l:total1 + 2 + s:tag_allowr + s:tag_mode * 2
+				let l:pos = l:total1 + 2 + g:mt_tag_allowr + g:mt_tag_mode * 2
 			elseif l:total2 > 0
-				let l:pos = l:total2 + l:total3 + 5 + s:tag_allowr
+				let l:pos = l:total2 + l:total3 + 5 + g:mt_tag_allowr
 			elseif l:total4 > 0
-				let l:pos = l:total4 + 4 + s:tag_allowr
+				let l:pos = l:total4 + 4 + g:mt_tag_allowr
 			endif
 			call extend(l:linerange[l:fname], [l:item.lnum - 1, l:item.lnum - 1 + l:pos])
 		endif
@@ -247,7 +249,7 @@ function! s:DenyChanges() range
 endfunction
 function! s:SearchCurrentDirectory()
 	let l:keyword  = escape(s:constructKeyword(), s:ptn_escape)
-	if s:tag_vigrep > 0
+	if g:mt_tag_vigrep > 0
 		let l:command  = "vimgrep /" . l:keyword . "/j " . expand("%:p:h:gs?\\?/?") . '/**/*.{c,cxx,cpp,h,hxx,hpp}'
 		silent! exe l:command
 		silent! exe "cwindow"
@@ -338,22 +340,22 @@ function! s:countList()
 		if l:type == 'add'
 			call add(l:cntlist, 'add')
 			call add(l:cntlist, l:line1+1)
-			let l:cnt = s:countSourceLines(l:line1+2+s:tag_allowr+s:tag_mode,l:line2-1-s:tag_mode)
+			let l:cnt = s:countSourceLines(l:line1+2+g:mt_tag_allowr+g:mt_tag_mode,l:line2-1-g:mt_tag_mode)
 			call extend(l:cntlist, l:cnt)
 		elseif l:type == 'chg'
 			call add(l:cntlist, 'chg')
 			call add(l:cntlist, l:line1+1)
-			call cursor(l:line1+2+s:tag_allowr, 1)
+			call cursor(l:line1+2+g:mt_tag_allowr, 1)
 			call searchpair('#if','#else','#endif')
 			let l:midline = line('.')
-			let l:cnt = s:countSourceLines(l:line1+3+s:tag_allowr,l:midline-1)
+			let l:cnt = s:countSourceLines(l:line1+3+g:mt_tag_allowr,l:midline-1)
 			call extend(l:cntlist, l:cnt)
 			let l:cnt = s:countSourceLines(l:midline+1,l:line2-2)
 			call extend(l:cntlist, l:cnt)
 		elseif l:type == 'del'
 			call add(l:cntlist, 'del')
 			call add(l:cntlist, l:line1+1)
-			let l:cnt = s:countSourceLines(l:line1+3+s:tag_allowr,l:line2-2)
+			let l:cnt = s:countSourceLines(l:line1+3+g:mt_tag_allowr,l:line2-2)
 			call extend(l:cntlist, l:cnt)
 		endif
 		let l:i   = l:i + 3
@@ -448,19 +450,19 @@ function! s:countSourceLines(startlineno, endlineno)
 endfunction
 
 function! s:constructStartLine()
-	let l:output = s:tag_start
+	let l:output = g:mt_tag_start
 	return l:output
 endfunction
 function! s:constructEndLine()
-	let l:output = s:tag_end
+	let l:output = g:mt_tag_end
 	return l:output
 endfunction
 function! s:constructKeyword()
-	let l:output = '[' . s:tag_key1 . ']'
-	if s:tag_key2 != ''
-		let l:output = l:output . '[' . s:tag_key2 . ']'
-		if s:tag_key3 != ''
-			let l:output = l:output . '[' . s:tag_key3 . ']'
+	let l:output = '[' . g:mt_tag_key1 . ']'
+	if g:mt_tag_key2 != ''
+		let l:output = l:output . '[' . g:mt_tag_key2 . ']'
+		if g:mt_tag_key3 != ''
+			let l:output = l:output . '[' . g:mt_tag_key3 . ']'
 		endif
 	endif
 	return l:output
@@ -473,42 +475,42 @@ function! s:constructKeywordLine(type)
 	elseif a:type == 'del'
 		let l:addtag = 'DEL[]_[]'
 	endif
-	let l:curtime = strftime(s:tag_timef)
-	let l:output = s:cmt_start . l:addtag . s:tag_sep . s:constructKeyword() . s:tag_sep . l:curtime . s:tag_sep . s:tag_user . s:cmt_end
+	let l:curtime = strftime(g:mt_tag_timef)
+	let l:output = g:mt_cmt_start . l:addtag . g:mt_tag_sep . s:constructKeyword() . g:mt_tag_sep . l:curtime . g:mt_tag_sep . g:mt_tag_user . g:mt_cmt_end
 	return l:output
 endfunction
 function! s:constructReasonLine()
-	let l:msg    = input("Reason: ", s:tag_reason)
-	let l:output = s:cmt_start . l:msg . s:cmt_end
+	let l:msg    = input("Reason: ", g:mt_tag_reason)
+	let l:output = g:mt_cmt_start . l:msg . g:mt_cmt_end
 	return l:output
 endfunction
 function! s:constructIfLine(type)
 	if a:type == 'add'
-		if s:tag_mode == 1
-			if s:tag_co == ''
+		if g:mt_tag_mode == 1
+			if g:mt_tag_co == ''
 				let l:addtag = '#if 1'
 			else
-				let l:addtag = '#ifndef ' . s:tag_co
+				let l:addtag = '#ifndef ' . g:mt_tag_co
 			endif
 		else
 			let l:addtag = ''
 		endif
 	elseif a:type == 'chg'
-		if s:tag_mode == 1
-			if s:tag_co == ''
+		if g:mt_tag_mode == 1
+			if g:mt_tag_co == ''
 				let l:addtag = '#if 0'
 			else
-				let l:addtag = '#ifdef ' . s:tag_co
+				let l:addtag = '#ifdef ' . g:mt_tag_co
 			endif
 		else
 			let l:addtag = '#if 0'
 		endif
 	elseif a:type == 'del'
-		if s:tag_mode == 1
-			if s:tag_co == ''
+		if g:mt_tag_mode == 1
+			if g:mt_tag_co == ''
 				let l:addtag = '#if 0'
 			else
-				let l:addtag = '#ifdef ' . s:tag_co
+				let l:addtag = '#ifdef ' . g:mt_tag_co
 			endif
 		else
 			let l:addtag = '#if 0'
@@ -520,11 +522,11 @@ function! s:constructElseLine(type)
 	if a:type == 'add'
 		let l:addtag = ''
 	elseif a:type == 'chg'
-		if s:tag_mode == 1
-			if s:tag_co == ''
+		if g:mt_tag_mode == 1
+			if g:mt_tag_co == ''
 				let l:addtag = '#else'
 			else
-				let l:addtag = '#else /* ' . s:tag_co . ' */'
+				let l:addtag = '#else /* ' . g:mt_tag_co . ' */'
 			endif
 		else
 			let l:addtag = '#else'
@@ -536,31 +538,31 @@ function! s:constructElseLine(type)
 endfunction
 function! s:constructEndifLine(type)
 	if a:type == 'add'
-		if s:tag_mode == 1
-			if s:tag_co == ''
+		if g:mt_tag_mode == 1
+			if g:mt_tag_co == ''
 				let l:addtag = '#endif'
 			else
-				let l:addtag = '#endif /* ' . s:tag_co . ' */'
+				let l:addtag = '#endif /* ' . g:mt_tag_co . ' */'
 			endif
 		else
 			let l:addtag = ''
 		endif
 	elseif a:type == 'chg'
-		if s:tag_mode == 1
-			if s:tag_co == ''
+		if g:mt_tag_mode == 1
+			if g:mt_tag_co == ''
 				let l:addtag = '#endif'
 			else
-				let l:addtag = '#endif /* ' . s:tag_co . ' */'
+				let l:addtag = '#endif /* ' . g:mt_tag_co . ' */'
 			endif
 		else
 			let l:addtag = '#endif'
 		endif
 	elseif a:type == 'del'
-		if s:tag_mode == 1
-			if s:tag_co == ''
+		if g:mt_tag_mode == 1
+			if g:mt_tag_co == ''
 				let l:addtag = '#endif'
 			else
-				let l:addtag = '#endif /* ' . s:tag_co . ' */'
+				let l:addtag = '#endif /* ' . g:mt_tag_co . ' */'
 			endif
 		else
 			let l:addtag = '#endif'
@@ -576,7 +578,7 @@ function! s:ModifyTag(type, startlineno, endlineno)
 	let l:curlineno += 1
 	call append(l:curlineno, s:constructKeywordLine(a:type))
 	let l:curlineno += 1
-	if s:tag_allowr > 0
+	if g:mt_tag_allowr > 0
 		call append(l:curlineno, s:constructReasonLine())
 		let l:curlineno += 1
 	endif
@@ -622,7 +624,7 @@ function! s:ModifyTag(type, startlineno, endlineno)
 endfunction
 
 function! s:splitChgBlock(startline, endline)
-	call cursor(a:startline + 2 + s:tag_allowr, 1)
+	call cursor(a:startline + 2 + g:mt_tag_allowr, 1)
 	call searchpair('#if','#else','#endif')
 	let l:endtext = getline(a:endline)
 	let l:midline = line('.')
@@ -645,12 +647,12 @@ function! s:splitChgBlock(startline, endline)
 	call append(l:curlineno, l:linetext)
 	let l:curlineno = l:curlineno + 1
 	" copy reason line
-	if s:tag_allowr > 0
+	if g:mt_tag_allowr > 0
 		let l:linetext  = getline(a:startline + 2)
 		call append(l:curlineno, l:linetext)
 		let l:curlineno = l:curlineno + 1
 	endif
-	" add #if according to s:tag_mode
+	" add #if according to g:mt_tag_mode
 	let l:ifelend = s:constructIfLine('add')
 	if l:ifelend != ''
 		call append(l:curlineno, l:ifelend)
@@ -705,43 +707,43 @@ function! s:tellPos(startlineno, endlineno)
 	return l:grouplist
 endfunction
 function! s:approveAddBlock(blockline1, blockline2, appline1, appline2)
-	if a:appline1 <= a:blockline1 + 2 + s:tag_allowr + s:tag_mode
+	if a:appline1 <= a:blockline1 + 2 + g:mt_tag_allowr + g:mt_tag_mode
 		"approve region begins at the beginning of the block
-		if a:appline2 >= a:blockline2 - 1 - s:tag_mode
+		if a:appline2 >= a:blockline2 - 1 - g:mt_tag_mode
 			"approve region ends at the ending of the block
-			silent! exe "normal ".(a:blockline2 - s:tag_mode)."G".(s:tag_mode + 1)."dd"
-			silent! exe "normal ".a:blockline1."G".(s:tag_allowr + s:tag_mode + 2)."dd"
+			silent! exe "normal ".(a:blockline2 - g:mt_tag_mode)."G".(g:mt_tag_mode + 1)."dd"
+			silent! exe "normal ".a:blockline1."G".(g:mt_tag_allowr + g:mt_tag_mode + 2)."dd"
 		else
-			let l:applines = a:appline2 - (a:blockline1 + 2 + s:tag_allowr + s:tag_mode)
+			let l:applines = a:appline2 - (a:blockline1 + 2 + g:mt_tag_allowr + g:mt_tag_mode)
 			if l:applines > 0
-				silent! exe "normal ".a:blockline1."G".(s:tag_allowr + s:tag_mode + 2)."dd".l:applines."jp"
+				silent! exe "normal ".a:blockline1."G".(g:mt_tag_allowr + g:mt_tag_mode + 2)."dd".l:applines."jp"
 			elseif l:applines == 0
-				silent! exe "normal ".a:blockline1."G".(s:tag_allowr + s:tag_mode + 2)."ddp"
+				silent! exe "normal ".a:blockline1."G".(g:mt_tag_allowr + g:mt_tag_mode + 2)."ddp"
 			endif
 		endif
 	else
-		if a:appline2 >= a:blockline2 - 1 - s:tag_mode
+		if a:appline2 >= a:blockline2 - 1 - g:mt_tag_mode
 			"approve region ends at the ending of the block
-			let l:applines = a:blockline2 - 1 - s:tag_mode - a:appline1
+			let l:applines = a:blockline2 - 1 - g:mt_tag_mode - a:appline1
 			if l:applines >= 0
-				silent! exe "normal ".(a:blockline2-s:tag_mode)."G".(s:tag_mode + 1)."dd".(l:applines+1)."kP"
+				silent! exe "normal ".(a:blockline2-g:mt_tag_mode)."G".(g:mt_tag_mode + 1)."dd".(l:applines+1)."kP"
 			endif
 		else
-			silent! exe "normal ".a:blockline1."G".(s:tag_allowr + s:tag_mode + 2)."Y".a:appline2."Gp"
-			silent! exe "normal ".(a:blockline2 + s:tag_allowr + 2)."G".(s:tag_mode + 1)."Y".a:appline1."GP"
+			silent! exe "normal ".a:blockline1."G".(g:mt_tag_allowr + g:mt_tag_mode + 2)."Y".a:appline2."Gp"
+			silent! exe "normal ".(a:blockline2 + g:mt_tag_allowr + 2)."G".(g:mt_tag_mode + 1)."Y".a:appline1."GP"
 		endif
 	endif
 endfunction
 function! s:approveDelBlock(blockline1, blockline2, appline1, appline2)
-	if a:appline1 <= a:blockline1 + 3 + s:tag_allowr
+	if a:appline1 <= a:blockline1 + 3 + g:mt_tag_allowr
 		"approve region begins at the beginning of the block
 		if a:appline2 >= a:blockline2 - 2
 			"approve region ends at the ending of the block
 			silent! exe "normal ".a:blockline1."G".(a:blockline2 - a:blockline1 + 1)."dd"
 		else
-			let l:applines = a:appline2 - (a:blockline1 + 3 + s:tag_allowr)
+			let l:applines = a:appline2 - (a:blockline1 + 3 + g:mt_tag_allowr)
 			if l:applines >= 0
-				silent! exe "normal ".(a:blockline1 + 3 + s:tag_allowr)."G".(l:applines + 1)."dd"
+				silent! exe "normal ".(a:blockline1 + 3 + g:mt_tag_allowr)."G".(l:applines + 1)."dd"
 			endif
 		endif
 	else
@@ -760,9 +762,9 @@ function! s:approveChgBlock(blockline1, blockline2, appline1, appline2)
 	let l:midline = s:splitChgBlock(a:blockline1, a:blockline2)
 	if l:midline <= a:appline1
 		"approve region locates after #else
-		let l:newappline1   = a:appline1 + 3 + s:tag_allowr + s:tag_mode
-		let l:newappline2   = a:appline2 + 3 + s:tag_allowr + s:tag_mode
-		let l:newblockline2 = a:blockline2 + 2 + s:tag_allowr + s:tag_mode
+		let l:newappline1   = a:appline1 + 3 + g:mt_tag_allowr + g:mt_tag_mode
+		let l:newappline2   = a:appline2 + 3 + g:mt_tag_allowr + g:mt_tag_mode
+		let l:newblockline2 = a:blockline2 + 2 + g:mt_tag_allowr + g:mt_tag_mode
 		if l:newappline1 > l:newblockline2
 			let l:newappline1 = l:newblockline2
 		endif
@@ -771,8 +773,8 @@ function! s:approveChgBlock(blockline1, blockline2, appline1, appline2)
 		endif
 		call s:approveAddBlock(l:midline + 2, l:newblockline2, l:newappline1, l:newappline2)
 	elseif l:midline < a:appline2
-		let l:newappline2   = a:appline2 + 3 + s:tag_allowr + s:tag_mode
-		let l:newblockline2 = a:blockline2 + 2 + s:tag_allowr + s:tag_mode
+		let l:newappline2   = a:appline2 + 3 + g:mt_tag_allowr + g:mt_tag_mode
+		let l:newblockline2 = a:blockline2 + 2 + g:mt_tag_allowr + g:mt_tag_mode
 		if l:newappline2 > l:newblockline2
 			let l:newappline2 = l:newblockline2
 		endif
@@ -784,21 +786,21 @@ function! s:approveChgBlock(blockline1, blockline2, appline1, appline2)
 	endif
 endfunction
 function! s:denyAddBlock(blockline1, blockline2, appline1, appline2)
-	if a:appline1 <= a:blockline1 + 2 + s:tag_allowr + s:tag_mode
+	if a:appline1 <= a:blockline1 + 2 + g:mt_tag_allowr + g:mt_tag_mode
 		"deny region begins at the beginning of the block
-		if a:appline2 >= a:blockline2 - 1 - s:tag_mode
+		if a:appline2 >= a:blockline2 - 1 - g:mt_tag_mode
 			"deny region ends at the ending of the block
 			silent! exe "normal ".a:blockline1."G".(a:blockline2 - a:blockline1 + 1)."dd"
 		else
-			let l:applines = a:appline2 - (a:blockline1 + 2 + s:tag_allowr + s:tag_mode)
+			let l:applines = a:appline2 - (a:blockline1 + 2 + g:mt_tag_allowr + g:mt_tag_mode)
 			if l:applines >= 0
-				silent! exe "normal ".(a:blockline1 + 2 + s:tag_allowr + s:tag_mode)."G".(l:applines + 1)."dd"
+				silent! exe "normal ".(a:blockline1 + 2 + g:mt_tag_allowr + g:mt_tag_mode)."G".(l:applines + 1)."dd"
 			endif
 		endif
 	else
-		if a:appline2 >= a:blockline2 - 1 - s:tag_mode
+		if a:appline2 >= a:blockline2 - 1 - g:mt_tag_mode
 			"deny region ends at the ending of the block
-			let l:applines = a:blockline2 - 1 - s:tag_mode - a:appline1
+			let l:applines = a:blockline2 - 1 - g:mt_tag_mode - a:appline1
 			if l:applines >= 0
 				silent! exe "normal ".a:appline1."G".(l:applines + 1)."dd"
 			endif
@@ -808,20 +810,20 @@ function! s:denyAddBlock(blockline1, blockline2, appline1, appline2)
 	endif
 endfunction
 function! s:denyDelBlock(blockline1, blockline2, appline1, appline2)
-	if a:appline1 <= a:blockline1 + 3 + s:tag_allowr
+	if a:appline1 <= a:blockline1 + 3 + g:mt_tag_allowr
 		"deny region begins at the beginning of the block
 		if a:appline2 >= a:blockline2 - 2
 			"deny region ends at the ending of the block
 			call s:decodeDeleteBlock(a:blockline1, a:blockline2)
 			silent! exe "normal ".(a:blockline2 - 1)."G2dd"
-			silent! exe "normal ".a:blockline1."G".(s:tag_allowr + 3)."dd"
+			silent! exe "normal ".a:blockline1."G".(g:mt_tag_allowr + 3)."dd"
 		else
 			call s:decodeDeleteBlock(a:blockline1, a:appline2)
-			let l:applines = a:appline2 - (a:blockline1 + 3 + s:tag_allowr)
+			let l:applines = a:appline2 - (a:blockline1 + 3 + g:mt_tag_allowr)
 			if l:applines > 0
-				silent! exe "normal ".a:blockline1."G".(s:tag_allowr + 3)."dd".l:applines."jp"
+				silent! exe "normal ".a:blockline1."G".(g:mt_tag_allowr + 3)."dd".l:applines."jp"
 			elseif l:applines == 0
-				silent! exe "normal ".a:blockline1."G".(s:tag_allowr + 3)."ddp"
+				silent! exe "normal ".a:blockline1."G".(g:mt_tag_allowr + 3)."ddp"
 			endif
 		endif
 	else
@@ -834,7 +836,7 @@ function! s:denyDelBlock(blockline1, blockline2, appline1, appline2)
 			endif
 		else
 			call s:decodeDeleteBlock(a:appline1, a:appline2)
-			silent! exe "normal ".a:blockline1."G".(s:tag_allowr + 3)."Y".a:appline2."Gp"
+			silent! exe "normal ".a:blockline1."G".(g:mt_tag_allowr + 3)."Y".a:appline2."Gp"
 			silent! exe "normal ".(a:blockline2 + 3)."G2Y".a:appline1."GP"
 		endif
 	endif
@@ -843,9 +845,9 @@ function! s:denyChgBlock(blockline1, blockline2, appline1, appline2)
 	let l:midline = s:splitChgBlock(a:blockline1, a:blockline2)
 	if l:midline <= a:appline1
 		"deny region locates after #else
-		let l:newappline1   = a:appline1 + 3 + s:tag_allowr + s:tag_mode
-		let l:newappline2   = a:appline2 + 3 + s:tag_allowr + s:tag_mode
-		let l:newblockline2 = a:blockline2 + 2 + s:tag_allowr + s:tag_mode
+		let l:newappline1   = a:appline1 + 3 + g:mt_tag_allowr + g:mt_tag_mode
+		let l:newappline2   = a:appline2 + 3 + g:mt_tag_allowr + g:mt_tag_mode
+		let l:newblockline2 = a:blockline2 + 2 + g:mt_tag_allowr + g:mt_tag_mode
 		if l:newappline1 > l:newblockline2
 			let l:newappline1 = l:newblockline2
 		endif
@@ -854,8 +856,8 @@ function! s:denyChgBlock(blockline1, blockline2, appline1, appline2)
 		endif
 		call s:denyAddBlock(l:midline + 2, l:newblockline2, l:newappline1, l:newappline2)
 	elseif l:midline < a:appline2
-		let l:newappline2   = a:appline2 + 3 + s:tag_allowr + s:tag_mode
-		let l:newblockline2 = a:blockline2 + 2 + s:tag_allowr + s:tag_mode
+		let l:newappline2   = a:appline2 + 3 + g:mt_tag_allowr + g:mt_tag_mode
+		let l:newblockline2 = a:blockline2 + 2 + g:mt_tag_allowr + g:mt_tag_mode
 		if l:newappline2 > l:newblockline2
 			let l:newappline2 = l:newblockline2
 		endif
@@ -867,22 +869,22 @@ function! s:denyChgBlock(blockline1, blockline2, appline1, appline2)
 	endif
 endfunction
 function! s:encodeDeleteBlock(line1, line2)
-	if s:rm_prefix != ''
+	if g:mt_rm_prefix != ''
 		let l:curline = a:line1
 		while l:curline <= a:line2
 			let l:text = getline(l:curline)
-			call setline(l:curline, s:rm_prefix . l:text)
+			call setline(l:curline, g:mt_rm_prefix . l:text)
 			let l:curline = l:curline + 1
 		endwhile
 	endif
 endfunction
 function! s:decodeDeleteBlock(line1, line2)
-	if s:rm_prefix != ''
+	if g:mt_rm_prefix != ''
 		let l:curline = a:line1
-		let l:prelen  = strlen(s:rm_prefix)
+		let l:prelen  = strlen(g:mt_rm_prefix)
 		while l:curline <= a:line2
 			let l:text = getline(l:curline)
-			if stridx(l:text, s:rm_prefix) == 0
+			if stridx(l:text, g:mt_rm_prefix) == 0
 				call setline(l:curline, strpart(l:text, l:prelen))
 			endif
 			let l:curline = l:curline + 1
@@ -924,11 +926,11 @@ function! s:splitKeywordLine(linetext)
 	let l:keyword  = s:constructKeyword()
 	let l:text = a:linetext
 	if stridx(l:text, l:keyword) > 0
-		let l:text = substitute(l:text, escape(s:cmt_start, s:ptn_escape), '', '')
-		let l:text = substitute(l:text, escape(s:cmt_end, s:ptn_escape), '', '')
-		let l:text = substitute(l:text, escape(s:tag_sep . l:keyword . s:tag_sep, s:ptn_escape), ':', '')
+		let l:text = substitute(l:text, escape(g:mt_cmt_start, s:ptn_escape), '', '')
+		let l:text = substitute(l:text, escape(g:mt_cmt_end, s:ptn_escape), '', '')
+		let l:text = substitute(l:text, escape(g:mt_tag_sep . l:keyword . g:mt_tag_sep, s:ptn_escape), ':', '')
 		" add ':' between author and date
-		let l:text = substitute(l:text, escape(s:tag_sep, s:ptn_escape), ':', '')
+		let l:text = substitute(l:text, escape(g:mt_tag_sep, s:ptn_escape), ':', '')
 		let l:text = substitute(l:text, '\CADD\[\(\d*\)\]_\[\(\d*\)\]', '\1:\2::::::', '')
 		let l:text = substitute(l:text, '\CCHG\[\(\d*\)\]_\[\(\d*\)\] -> \[\(\d*\)\]_\[\(\d*\)\]', '::\1:\2:\3:\4::', '')
 		let l:text = substitute(l:text, '\CDEL\[\(\d*\)\]_\[\(\d*\)\]', '::::::\1:\2', '')
@@ -988,7 +990,7 @@ function! s:ListStaticCheck(loopcheck, outnr)
 	endfor
 	silent! exe "bdelete"
 	silent! exe "buf " . a:outnr
-	if s:tag_vigrep > 0
+	if g:mt_tag_vigrep > 0
 		let l:basepath = expand("%:p:h")
 		let l:curfile = strpart(l:curfile, len(l:basepath)+1)
 	endif
